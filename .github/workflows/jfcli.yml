@@ -1,34 +1,24 @@
 name: "AppTrust: Package"
-on: push
+
+on:
+  push:
+  workflow_dispatch:
+
 permissions:
-  actions: read # for detecting the Github Actions environment.
-  id-token: write # for creating OIDC tokens for signing.
-  packages: write # for uploading attestations.
   contents: read
-  security-events: write # Required for uploading code scanning.
-  attestations: write
-  artifact-metadata: write
-  issues: write
-env:
-  JF_RT_URL: "https://${{vars.JF_NAME}}.jfrog.io"
-  PROJECT_KEY: "spring-petclinic-ms"
-  JOB_SUMMARY: false
-  #RBV2_SIGNING_KEY: "${{secrets.RBV2_SIGNING_KEY}}" # ref https://jfrog.com/help/r/jfrog-artifactory-documentation/create-signing-keys-for-release-bundles-v2
-  DEFAULT_WORKSPACE: "${{github.workspace}}"  # /home/runner/work/spring-petclinic/spring-petclinic
-  GITHUB_RUN_ID: "${{github.run_id}}"
-  GITHUB_RUN_NUMBER: "${{github.run_number}}"
-  BUILD_PROFILE: "MVN" # MVN or DOCKER
+  id-token: write
+  actions: read
+
 jobs:
-  apiGatewayMvnPackage:
-    env:  
-      BUILD_NAME: "api-gateway"    # APPLICATION_KEY="api-gateway" 
-      RT_REPO_VIRTUAL: "spring-petclinic-ms-api-gateway-virtual" # spring-petclinic-ms-api-gateway-init-local, spring-petclinic-ms-api-gateway-dev-local, spring-petclinic-ms-api-gateway-prod-local,  spring-petclinic-ms-mvn-remote
-    - name: "MVN: API Gateway"
-      uses: "./.github/package.yml"
-      with:
-        applicationKey: "${{env.BUILD_NAME}}"
-        buildProfile: "${{env.BUILD_PROFILE}}"
-        buildName: "${{env.BUILD_NAME}}"
-        buildId: "ga-${{env.GITHUB_RUN_NUMBER}}"
-        rtRepoVirtual: "${{env.RT_REPO_VIRTUAL}}"
-        projectKey: "${{env.PROJECT_KEY}}"
+  api-gateway:
+    name: "MVN: api-gateway"
+    uses: ./.github/workflows/jfcli-commons.yml
+    secrets: inherit
+    with:
+      project_key: "spring-petclinic-ms"
+      application_key: "api-gateway"
+      build_profile: "MVN"
+      build_name: "api-gateway"
+      build_id: "ga-${{ github.run_number }}" 
+      rt_repo_virtual: "spring-petclinic-ms-api-gateway-virtual"
+

@@ -1,0 +1,191 @@
+# Reusable / dispatchable package job (MVN or DOCKER).
+# GitHub only loads reusable workflows from .github/workflows/; keep this file
+# identical to .github/workflows/jfcli-commons.yml. Callers must use:
+#   uses: ./.github/workflows/jfcli-commons.yml
+name: "JFCLI Commons"
+
+on:
+  workflow_call:
+    inputs:
+      project_key:
+        description: "JFrog Project key"
+        required: false
+        type: string
+        default: "spring-petclinic-ms"
+      build_profile:
+        description: "MVN or DOCKER"
+        type: choice
+        default: "MVN"
+        options:
+          - MVN
+          - DOCKER
+      application_key:
+        description: "AppTrust / module key (e.g. api-gateway)"
+        required: true
+        type: string
+      build_name:
+        description: "Artifactory build name (defaults to application_key)"
+        required: false
+        type: string
+      build_id:
+        description: "Artifactory build number / AppTrust version"
+        required: false
+        type: string
+      rt_repo_virtual:
+        description: "Maven virtual repo (defaults to spring-petclinic-ms-<application_key>-virtual)"
+        required: false
+        type: string
+      jf_name:
+        description: "JFrog SaaS hostname (vars.JF_NAME if empty)"
+        required: false
+        type: string
+  workflow_dispatch:
+    inputs:
+      project_key:
+        description: "JFrog Project key"
+        required: false
+        type: string
+        default: "spring-petclinic-ms"
+      build_profile:
+        description: "Build profile"
+        type: choice
+        default: "MVN"
+        options:
+          - MVN
+          - DOCKER"
+      application_key:
+        description: "AppTrust / module key (e.g. api-gateway)"
+        required: true
+        type: string
+      build_name:
+        description: "Artifactory build name (defaults to application_key)"
+        required: false
+        type: string
+      build_id:
+        description: "Artifactory build number / AppTrust version"
+        required: false
+        type: string
+      rt_repo_virtual:
+        description: "Maven virtual repo (defaults to spring-petclinic-ms-<application_key>-virtual)"
+        required: false
+        type: string
+      jf_name:
+        description: "JFrog SaaS hostname (vars.JF_NAME if empty)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+  actions: read
+
+concurrency:
+  group: package-${{ inputs.application_key }}-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  JAVA_DISTRIBUTION: temurin
+  JAVA_VERSION: "17"
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_KEY: ${{ inputs.project_key }}
+      APPLICATION_KEY: ${{ inputs.application_key }}
+      BUILD_PROFILE: ${{ inputs.build_profile }}
+      BUILD_NAME: ${{ inputs.build_name || inputs.application_key }}
+      BUILD_ID: ${{ inputs.build_id || format('ga-{0}', github.run_number) }}
+      RT_REPO_VIRTUAL: ${{ inputs.rt_repo_virtual || format('spring-petclinic-ms-{0}-virtual', inputs.application_key) }}
+      JF_URL: https://${{ inputs.jf_name || vars.JF_NAME }}.jfrog.io
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: "Set up JDK ${{ env.JAVA_VERSION }}"
+        uses: actions/setup-java@v4
+        with:
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+
+      - name: "Setup JFrog CLI"
+        uses: jfrog/setup-jfrog-cli@v5
+        env:
+          JF_URL: ${{ env.JF_URL }}
+          JF_PROJECT: ${{ env.PROJECT_KEY }}
+          JFROG_CLI_LOG_LEVEL: DEBUG
+        with:
+          oidc-provider-name: ${{ vars.JF_OIDC_PROVIDER_NAME }}
+          disable-job-summary: "false"
+          disable-auto-build-publish: "true"
+
+      - name: "Configure Maven repositories"
+        run: |
+          jf mvnc \
+            --repo-resolve-releases "${RT_REPO_VIRTUAL}" \
+            --repo-resolve-snapshots "${RT_REPO_VIRTUAL}" \
+            --repo-deploy-releases "${RT_REPO_VIRTUAL}" \
+            --repo-deploy-snapshots "${RT_REPO_VIRTUAL}"
+
+      - name: "Set up Docker Buildx"
+        if: ${{ env.BUILD_PROFILE == 'DOCKER' }}
+        uses: docker/setup-buildx-action@v3
+
+      - name: MVN package application
+        if: ${{ env.BUILD_PROFILE == 'MVN' }}
+        run: |
+          jf mvn -B clean install surefire-report:report \
+            -Denforcer.skip \
+            -pl "spring-petclinic-${APPLICATION_KEY}" -am \
+            --build-name="${BUILD_NAME}" \
+            --build-number="${BUILD_ID}" \
+            --project="${PROJECT_KEY}" \
+            --detailed-summary
+
+      - name: DOCKER package application
+        if: ${{ env.BUILD_PROFILE == 'DOCKER' }}
+        run: |
+          jf mvn -B clean install surefire-report:report \
+            -Denforcer.skip \
+            -P buildDocker \
+            -Dcontainer.platform="linux/amd64" \
+            -pl "spring-petclinic-${APPLICATION_KEY}" -am \
+            --build-name="${BUILD_NAME}" \
+            --build-number="${BUILD_ID}" \
+            --project="${PROJECT_KEY}" \
+            --detailed-summary
+
+      - name: Publish build info
+        run: |
+          jf rt bp "${BUILD_NAME}" "${BUILD_ID}" \
+            --collect-env=true \
+            --collect-git-info=true \
+            --project="${PROJECT_KEY}" \
+            --detailed-summary
+
+      - name: "AppTrust: create application version"
+        env:
+          APP_SPEC_JSON: ./jfcli-app-spec.json
+        run: |
+          cat > "${APP_SPEC_JSON}" <<EOF
+          {
+            "builds": [
+              {
+                "name": "${BUILD_NAME}",
+                "number": "${BUILD_ID}",
+                "repository_key": "${PROJECT_KEY}-build-info",
+                "include_dependencies": false
+              }
+            ]
+          }
+          EOF
+          echo "AppTrust spec ${APP_SPEC_JSON}:"
+          cat "${APP_SPEC_JSON}"
+          # https://docs.jfrog.com/governance/docs/create-application-version-cli
+          jf apptrust version-create "${APPLICATION_KEY}" "${BUILD_ID}" \
+            --spec="${APP_SPEC_JSON}" \
+            --tag="Package"
+          rm -f "${APP_SPEC_JSON}"
