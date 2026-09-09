@@ -1,6 +1,6 @@
 #!/bin/bash
 clear
-buildApp=${1:-"DEFAULT"}
+buildApp=${1:-"DEFAULT"} buildProfile=${2:-"MVN"}
 export JF_NAME="psazuse" JF_EDGE_NAME="psazeuwedge" JFROG_CLI_LOG_LEVEL="DEBUG" 
 export JF_RT_URL="https://${JF_NAME}.jfrog.io" PROJECT_KEY="spring-petclinic-ms" 
 
@@ -10,18 +10,53 @@ export EVD_KEY_PRIVATE="$(cat ~/.ssh/jfrog_evd_private.pem)" EVD_KEY_PUBLIC="$(c
 
 jf config use ${JF_NAME}
 
-common-app-package(){
+common-docker-build(){
     local APPLICATION_KEY=${1} 
     local BUILD_NAME="${APPLICATION_KEY}" RT_REPO_VIRTUAL="spring-petclinic-ms-${APPLICATION_KEY}-virtual" 
 
     printf "\n*** App Package: ${APPLICATION_KEY}  Build and publish **\n"
     jf mvnc --repo-resolve-releases ${RT_REPO_VIRTUAL} --repo-resolve-snapshots ${RT_REPO_VIRTUAL} --repo-deploy-releases ${RT_REPO_VIRTUAL} --repo-deploy-snapshots ${RT_REPO_VIRTUAL}    
-    jf mvn clean install -DskipTests -Denforcer.skip -pl spring-petclinic-${APPLICATION_KEY} -am --build-name=${BUILD_NAME} --build-number=${BUILD_ID} --project="${PROJECT_KEY}" --detailed-summary
+    jf mvn clean install surefire-report:report -P buildDocker -Dcontainer.platform="linux/arm64" -pl spring-petclinic-${APPLICATION_KEY} -am --build-name=${BUILD_NAME} --build-number=${BUILD_ID} --project="${PROJECT_KEY}" --detailed-summary
     jf rt bp ${BUILD_NAME} ${BUILD_ID} --collect-env=true --collect-git-info=true --project="${PROJECT_KEY}" --detailed-summary
 
     printf "\n*** AppTrust: App Version create **\n"
     export AT_APP_SPEC_JSON="./jfcli-app-spec.json"
     cat > "${AT_APP_SPEC_JSON}" <<EOF
+    {
+  "builds": [
+    {
+      "name": "${BUILD_NAME}",
+      "number": "${BUILD_ID}",
+      "repository_key": "${PROJECT_KEY}-build-info",
+      "include_dependencies": false
+    }
+  ]
+}
+EOF
+
+    printf "AppTrust app spec file content: ${AT_APP_SPEC_JSON}"
+    cat ${AT_APP_SPEC_JSON}
+
+    # ref: https://docs.jfrog.com/governance/docs/create-application-version-cli 
+    # jf apptrust version-create "app-spring-petclinic" 2026.07.23-1225 --spec="./at-app-spec.json" 
+    jf apptrust version-create ${APPLICATION_KEY} ${APPLICATION_VERSION} --spec="${AT_APP_SPEC_JSON}" --tag="Package"
+    # jf apptrust version-create ${APPLICATION_KEY} ${APPLICATION_VERSION} --source-type-builds="name=${BUILD_NAME}, id=${BUILD_ID}, repository_key" --tag="prototype" --dry-run
+    rm -rf ${AT_APP_SPEC_JSON}
+}
+common-mvn-package(){
+  local APPLICATION_KEY=${1} 
+  local BUILD_NAME="${APPLICATION_KEY}" RT_REPO_VIRTUAL="spring-petclinic-ms-${APPLICATION_KEY}-virtual" 
+
+  printf "\n*** App Package: ${APPLICATION_KEY}  Build and publish **\n"
+  jf mvnc --repo-resolve-releases ${RT_REPO_VIRTUAL} --repo-resolve-snapshots ${RT_REPO_VIRTUAL} --repo-deploy-releases ${RT_REPO_VIRTUAL} --repo-deploy-snapshots ${RT_REPO_VIRTUAL}    
+  
+  jf mvn clean install surefire-report:report -Denforcer.skip -pl spring-petclinic-${APPLICATION_KEY} -am --build-name=${BUILD_NAME} --build-number=${BUILD_ID} --project="${PROJECT_KEY}" --detailed-summary
+  
+  jf rt bp ${BUILD_NAME} ${BUILD_ID} --collect-env=true --collect-git-info=true --project="${PROJECT_KEY}" --detailed-summary
+
+  printf "\n*** AppTrust: App Version create **\n"
+  export AT_APP_SPEC_JSON="./jfcli-app-spec.json"
+  cat > "${AT_APP_SPEC_JSON}" <<EOF
 {
   "builds": [
     {
@@ -45,11 +80,22 @@ EOF
 }
 
 api-gateway(){
-    printf "\n*** API Gateway: Build and publish **\n"
-    export APPLICATION_KEY="api-gateway" 
-    export BUILD_NAME="${APPLICATION_KEY}" RT_REPO_VIRTUAL="spring-petclinic-ms-api-gateway-virtual"  # spring-petclinic-ms-api-gateway-init-local, spring-petclinic-ms-api-gateway-dev-local, spring-petclinic-ms-api-gateway-prod-local,  spring-petclinic-ms-mvn-remote
-
-    common-app-package ${APPLICATION_KEY} 
+  printf "\n*** API Gateway: Build and publish **\n"
+  export APPLICATION_KEY="api-gateway" 
+  export BUILD_NAME="${APPLICATION_KEY}" RT_REPO_VIRTUAL="spring-petclinic-ms-api-gateway-virtual"  # spring-petclinic-ms-api-gateway-init-local, spring-petclinic-ms-api-gateway-dev-local, spring-petclinic-ms-api-gateway-prod-local,  spring-petclinic-ms-mvn-remote
+  
+  case ${buildProfile} in
+    MVN)
+        common-mvn-package ${APPLICATION_KEY} 
+        ;;
+    DOCKER)
+        common-docker-build ${APPLICATION_KEY} 
+        ;;
+    *)
+      printf "Invalid argument: ${buildProfile}"
+      exit 1
+      ;;
+  esac
 }
 
 config-server(){
@@ -277,48 +323,50 @@ arg_len=${#buildApp}
 buildApp=$(printf "${buildApp}" | tr '[:lower:]' '[:upper:]' | xargs)
 printf "User Action: ${buildApp}, and arg length: ${arg_len}"
 
+buildProfile=$(printf "${buildProfile}" | tr '[:lower:]' '[:upper:]' | xargs)
+printf "    Build Profile: ${buildProfile}, and arg length: ${buildProfile} \n"
+
 case ${buildApp} in
     DEFAULT)
-        default
-        ;;
+      default
+      ;;
     API-GATEWAY | API | GATEWAY)
-        api-gateway
-        ;;
+      api-gateway 
+      ;;
     CONFIG-SERVER | CONFIG)
-        config-server
-        ;;
+      config-server
+      ;;
     CUSTOMERS-SERVICE | CUSTOMERS)
-        customers-service
-        ;;
+      customers-service
+      ;;
     DISCOVERY-SERVER | DISCOVERY)
-        discovery-server
-        ;;
+      discovery-server
+      ;;
     GENAI-SERVICE | GENAI)
-        genai-service
-        ;;
+      genai-service
+      ;;
     ADMIN-SERVER | ADMIN)
-        admin-server
-        ;;
+      admin-server
+      ;;
     VETS-SERVICE | VETS)
-        vets-service
-        ;;
+      vets-service
+      ;;
     VISITS-SERVICE | VISITS)
-        visits-service
-        ;;
+      visits-service
+      ;;
     MULTI-APPS | VCS | MULTI-VC)
-        multi-apps-from-app-vc
-        ;;
+      multi-apps-from-app-vc
+      ;;
     MULTI-APPS-FROM-BUILDS | BUILDS | MULTI-BUILDS)
-        multi-apps-from-builds
-        ;;
+      multi-apps-from-builds
+      ;;
     RBV2-ALL-MS | RBV2)
-        rbv2-all-ms
-        ;;
+      rbv2-all-ms
+      ;;
     *)
-        printf "Invalid argument: ${buildApp}"
-        exit 1
-        ;;
+      printf "Invalid argument: ${buildApp}"
+      exit 1
+      ;;
 esac
-
 printf "\n ----------------------------------------------------------------  "
 printf "\n***** [END] TS: $(date +"%Y-%m-%d %H:%M:%S") \n\n"

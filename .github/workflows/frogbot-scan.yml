@@ -1,7 +1,6 @@
 name: "Frogbot Scan"
 on: push
 permissions:
-
   contents: read
   security-events: write
   # [Mandatory if using OIDC authentication protocol instead of JF_ACCESS_TOKEN]
@@ -9,6 +8,7 @@ permissions:
 env:
   JF_RT_URL: "https://${{vars.JF_NAME}}.jfrog.io"
   PROJECT_KEY: "spring-petclinic-ms"
+  # refer: https://docs.jfrog.com/security/docs/how-to-commit-scan-and-pr-scan
 jobs:
   scan-repository:
     runs-on: ubuntu-latest
@@ -25,8 +25,6 @@ jobs:
           JFROG_CLI_LOG_LEVEL: "DEBUG"
           JF_GIT_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
           ACTIONS_ALLOW_UNSECURE_NODE_VERSION: true  # Allow secure Node fallback
-          JF_WORKING_DIR: "**/src/main/**"
-          JF_PATH_EXCLUSIONS: "*git*;*node_modules*;*target*;*venv*;*test*"
         with:
             version: latest #2.71.0
             oidc-provider-name: ${{ vars.JF_OIDC_PROVIDER_NAME }}
