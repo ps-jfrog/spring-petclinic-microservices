@@ -1,21 +1,17 @@
-# Reusable / dispatchable package job (MVN or DOCKER).
-# GitHub only loads reusable workflows from .github/workflows/; keep this file
-# identical to .github/workflows/jfcli-commons.yml. Callers must use:
-#   uses: ./.github/workflows/jfcli-commons.yml
+# Reusable package job (MVN or DOCKER)
+# Saved at .github/workflows/jfcli-commons.yml
 name: "JFCLI Commons"
-
 on:
   workflow_call:
     inputs:
       PROJECT_KEY:
         description: "JFrog Project key"
-        required: false
+        required: true
         type: string
-        default: "spring-petclinic-ms"
       BUILD_PROFILE:
         description: "MVN or DOCKER"
+        required: true
         type: string
-        default: "MVN"
       APPLICATION_KEY:
         description: "AppTrust / module key (e.g. api-gateway)"
         required: true
@@ -30,46 +26,13 @@ on:
         type: string
       RT_REPO_VIRTUAL:
         description: "Maven virtual repo (defaults to spring-petclinic-ms-<APPLICATION_KEY>-virtual)"
-        required: false
-        type: string
-      JF_NAME:
-        description: "JFrog SaaS hostname (vars.JF_NAME if empty)"
-        required: false
-        type: string
-  workflow_dispatch:
-    inputs:
-      PROJECT_KEY:
-        description: "JFrog Project key"
-        required: false
-        type: string
-        default: "spring-petclinic-ms"
-      BUILD_PROFILE:
-        description: "Build profile"
-        type: choice
-        default: "MVN"
-        options:
-          - MVN
-          - DOCKER
-      APPLICATION_KEY:
-        description: "AppTrust / module key (e.g. api-gateway)"
         required: true
         type: string
-      BUILD_NAME:
-        description: "Artifactory build name (defaults to APPLICATION_KEY)"
+      DOCKER_BUILDX_PLATFORMS:
+        description: "Docker buildx platforms (defaults to linux/amd64,linux/arm64)"
         required: false
         type: string
-      BUILD_ID:
-        description: "Artifactory build number / AppTrust version"
-        required: false
-        type: string
-      RT_REPO_VIRTUAL:
-        description: "Maven virtual repo (defaults to spring-petclinic-ms-<APPLICATION_KEY>-virtual)"
-        required: false
-        type: string
-      JF_NAME:
-        description: "JFrog SaaS hostname (vars.JF_NAME if empty)"
-        required: false
-        type: string
+        default: "linux/amd64,linux/arm64"
 
 permissions:
   contents: read
@@ -82,7 +45,7 @@ concurrency:
 
 env:
   JAVA_DISTRIBUTION: temurin
-  JAVA_VERSION: "17"
+  JAVA_VERSION: "25"
 
 jobs:
   package:
@@ -94,7 +57,8 @@ jobs:
       BUILD_NAME: ${{ inputs.BUILD_NAME || inputs.APPLICATION_KEY }}
       BUILD_ID: ${{ inputs.BUILD_ID || format('ga-{0}', github.run_number) }}
       RT_REPO_VIRTUAL: ${{ inputs.RT_REPO_VIRTUAL || format('spring-petclinic-ms-{0}-virtual', inputs.APPLICATION_KEY) }}
-      JF_URL: https://${{ inputs.JF_NAME || vars.JF_NAME }}.jfrog.io
+      JF_HOST: ${{ vars.JF_NAME }}.jfrog.io
+      JF_URL: https://${{ vars.JF_NAME }}.jfrog.io
     steps:
       - name: "Checkout"
         uses: actions/checkout@v4
@@ -110,6 +74,7 @@ jobs:
 
       - name: "Setup JFrog CLI"
         uses: jfrog/setup-jfrog-cli@v5
+        id: setup-cli
         env:
           JF_URL: ${{ env.JF_URL }}
           JF_PROJECT: ${{ env.PROJECT_KEY }}
@@ -119,17 +84,14 @@ jobs:
           disable-job-summary: "false"
           disable-auto-build-publish: "true"
 
-      - name: "Configure Maven repositories"
+# PACKAGE: MVN
+      - name: "MVN Configure repositories"
         run: |
           jf mvnc \
             --repo-resolve-releases "${RT_REPO_VIRTUAL}" \
             --repo-resolve-snapshots "${RT_REPO_VIRTUAL}" \
             --repo-deploy-releases "${RT_REPO_VIRTUAL}" \
             --repo-deploy-snapshots "${RT_REPO_VIRTUAL}"
-
-      - name: "Set up Docker Buildx"
-        if: ${{ env.BUILD_PROFILE == 'DOCKER' }}
-        uses: docker/setup-buildx-action@v3
 
       - name: MVN package application
         if: ${{ env.BUILD_PROFILE == 'MVN' }}
@@ -141,6 +103,27 @@ jobs:
             --build-number="${BUILD_ID}" \
             --project="${PROJECT_KEY}" \
             --detailed-summary
+
+# PACKAGE: DOCKER
+      - name: "Docker authentication"
+        if: ${{ env.BUILD_PROFILE == 'DOCKER' }}
+        uses: docker/login-action@v4    # ref https://github.com/marketplace/actions/docker-login
+        with: 
+          registry: ${{ env.JF_URL }}
+          username: ${{steps.setup-cli.outputs.oidc-user}}
+          password: ${{steps.setup-cli.outputs.oidc-token}}
+
+      - name: "Docker Quick Emulator (QEMU) - cross architecture build"
+        if: ${{ env.BUILD_PROFILE == 'DOCKER' }}
+        uses: docker/setup-qemu-action@v4     # ref: https://github.com/docker/setup-qemu-action
+      
+      - name: "Set up Docker Buildx"
+        if: ${{ env.BUILD_PROFILE == 'DOCKER' }}   
+        uses: docker/setup-buildx-action@v4           # ref: https://github.com/docker/setup-buildx-action
+        with:
+          use: true
+          driver: "docker-container"
+          platforms: ${{ inputs.DOCKER_BUILDX_PLATFORMS }}
 
       - name: DOCKER package application
         if: ${{ env.BUILD_PROFILE == 'DOCKER' }}
@@ -155,6 +138,7 @@ jobs:
             --project="${PROJECT_KEY}" \
             --detailed-summary
 
+# BUILD INFO
       - name: Publish build info
         run: |
           jf rt bp "${BUILD_NAME}" "${BUILD_ID}" \
@@ -163,6 +147,8 @@ jobs:
             --project="${PROJECT_KEY}" \
             --detailed-summary
 
+
+# APP VERSION
       - name: "AppTrust: create application version"
         env:
           APP_SPEC_JSON: ./jfcli-app-spec.json
@@ -185,4 +171,11 @@ jobs:
           jf apptrust version-create "${APPLICATION_KEY}" "${BUILD_ID}" \
             --spec="${APP_SPEC_JSON}" \
             --tag="Package"
-          rm -f "${APP_SPEC_JSON}"
+          
+      - name: "Summary"
+        run: |
+          echo "Project key: ${PROJECT_KEY}"
+          echo "Application key: ${APPLICATION_KEY}"
+          echo "Build name: ${BUILD_NAME}"
+          echo "Build number: ${BUILD_ID}"
+   

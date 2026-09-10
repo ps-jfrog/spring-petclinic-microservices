@@ -3,6 +3,30 @@ name: "AppTrust: Package"
 on:
   push:
   workflow_dispatch:
+    inputs:
+      APPLICATION_KEY:
+        description: "AppTrust / module key"
+        required: true
+        type: choice
+        options:
+          - api-gateway
+          - config-server
+          # - customers-service
+          # - discovery-server
+          # - genai-service
+          # - admin-server
+          # - vets-service
+          # - visits-service
+      BUILD_PROFILE:
+        description: "Build profile"
+        required: true
+        type: choice
+        default: "MVN"
+        options:
+          - MVN
+          - DOCKER
+env:
+  GLOBAL_PROJECT_KEY: "spring-petclinic-ms"
 
 permissions:
   contents: read
@@ -10,26 +34,43 @@ permissions:
   actions: read
 
 jobs:
+# Manual Run: Executes dynamically based on UI selection
+  manual-dispatch:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    name: "Manual: ${{ inputs.APPLICATION_KEY }}"
+    uses: ./.github/workflows/jfcli-commons.yml
+    secrets: inherit
+    with:
+      PROJECT_KEY: "${{ env.GLOBAL_PROJECT_KEY }}"
+      APPLICATION_KEY: ${{ inputs.APPLICATION_KEY }}
+      BUILD_PROFILE: ${{ inputs.BUILD_PROFILE }}
+      BUILD_NAME: ${{ inputs.APPLICATION_KEY }}
+      BUILD_ID: "ga-${{ github.run_number }}"
+      RT_REPO_VIRTUAL: "${{ env.GLOBAL_PROJECT_KEY }}-${{ inputs.APPLICATION_KEY }}-virtual"
+
+# Push Trigger:
   mvn_api-gateway:
+    if: ${{ github.event_name != 'workflow_dispatch' }}
     name: "MVN: api-gateway"
     uses: ./.github/workflows/jfcli-commons.yml
     secrets: inherit
     with:
-      PROJECT_KEY: "spring-petclinic-ms"
+      PROJECT_KEY: "${{ env.GLOBAL_PROJECT_KEY }}"
       APPLICATION_KEY: "api-gateway"
       BUILD_PROFILE: "MVN"
       BUILD_NAME: "api-gateway"
-      BUILD_ID: "ga-${{ github.run_number }}" 
-      RT_REPO_VIRTUAL: "spring-petclinic-ms-api-gateway-virtual"
+      BUILD_ID: "ga-mvn-${{ github.run_number }}" 
+      RT_REPO_VIRTUAL: "${{ env.GLOBAL_PROJECT_KEY }}-api-gateway-virtual"
 
   mvn_config-server:
+    if: ${{ github.event_name != 'workflow_dispatch' }}
     name: "MVN: config-server"
     uses: ./.github/workflows/jfcli-commons.yml
     secrets: inherit
     with:
-      PROJECT_KEY: "spring-petclinic-ms"
+      PROJECT_KEY: "${{ env.GLOBAL_PROJECT_KEY }}"
       APPLICATION_KEY: "config-server"
       BUILD_PROFILE: "MVN"
       BUILD_NAME: "config-server"
-      BUILD_ID: "ga-${{ github.run_number }}" 
-      RT_REPO_VIRTUAL: "spring-petclinic-ms-config-server-virtual"
+      BUILD_ID: "ga-mvn${{ github.run_number }}" 
+      RT_REPO_VIRTUAL: "${{ env.GLOBAL_PROJECT_KEY }}-config-server-virtual"
