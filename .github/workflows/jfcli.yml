@@ -10,15 +10,26 @@ permissions:
   actions: read
 
 jobs:
-  api-gateway:
+  mvn_api-gateway:
     name: "MVN: api-gateway"
     uses: ./.github/workflows/jfcli-commons.yml
     secrets: inherit
     with:
-      project_key: "spring-petclinic-ms"
-      application_key: "api-gateway"
-      build_profile: "MVN"
-      build_name: "api-gateway"
-      build_id: "ga-${{ github.run_number }}" 
-      rt_repo_virtual: "spring-petclinic-ms-api-gateway-virtual"
+      PROJECT_KEY: "spring-petclinic-ms"
+      APPLICATION_KEY: "api-gateway"
+      BUILD_PROFILE: "MVN"
+      BUILD_NAME: "api-gateway"
+      BUILD_ID: "ga-${{ github.run_number }}" 
+      RT_REPO_VIRTUAL: "spring-petclinic-ms-api-gateway-virtual"
 
+  mvn_config-server:
+    name: "MVN: config-server"
+    uses: ./.github/workflows/jfcli-commons.yml
+    secrets: inherit
+    with:
+      PROJECT_KEY: "spring-petclinic-ms"
+      APPLICATION_KEY: "config-server"
+      BUILD_PROFILE: "MVN"
+      BUILD_NAME: "config-server"
+      BUILD_ID: "ga-${{ github.run_number }}" 
+      RT_REPO_VIRTUAL: "spring-petclinic-ms-config-server-virtual"

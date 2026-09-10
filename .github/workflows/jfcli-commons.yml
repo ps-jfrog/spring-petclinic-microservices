@@ -7,69 +7,69 @@ name: "JFCLI Commons"
 on:
   workflow_call:
     inputs:
-      project_key:
+      PROJECT_KEY:
         description: "JFrog Project key"
         required: false
         type: string
         default: "spring-petclinic-ms"
-      build_profile:
+      BUILD_PROFILE:
         description: "MVN or DOCKER"
         type: choice
         default: "MVN"
         options:
           - MVN
           - DOCKER
-      application_key:
+      APPLICATION_KEY:
         description: "AppTrust / module key (e.g. api-gateway)"
         required: true
         type: string
-      build_name:
-        description: "Artifactory build name (defaults to application_key)"
+      BUILD_NAME:
+        description: "Artifactory build name (defaults to APPLICATION_KEY)"
         required: false
         type: string
-      build_id:
+      BUILD_ID:
         description: "Artifactory build number / AppTrust version"
         required: false
         type: string
-      rt_repo_virtual:
-        description: "Maven virtual repo (defaults to spring-petclinic-ms-<application_key>-virtual)"
+      RT_REPO_VIRTUAL:
+        description: "Maven virtual repo (defaults to spring-petclinic-ms-<APPLICATION_KEY>-virtual)"
         required: false
         type: string
-      jf_name:
+      JF_NAME:
         description: "JFrog SaaS hostname (vars.JF_NAME if empty)"
         required: false
         type: string
   workflow_dispatch:
     inputs:
-      project_key:
+      PROJECT_KEY:
         description: "JFrog Project key"
         required: false
         type: string
         default: "spring-petclinic-ms"
-      build_profile:
+      BUILD_PROFILE:
         description: "Build profile"
         type: choice
         default: "MVN"
         options:
           - MVN
-          - DOCKER"
-      application_key:
+          - DOCKER
+      APPLICATION_KEY:
         description: "AppTrust / module key (e.g. api-gateway)"
         required: true
         type: string
-      build_name:
-        description: "Artifactory build name (defaults to application_key)"
+      BUILD_NAME:
+        description: "Artifactory build name (defaults to APPLICATION_KEY)"
         required: false
         type: string
-      build_id:
+      BUILD_ID:
         description: "Artifactory build number / AppTrust version"
         required: false
         type: string
-      rt_repo_virtual:
-        description: "Maven virtual repo (defaults to spring-petclinic-ms-<application_key>-virtual)"
+      RT_REPO_VIRTUAL:
+        description: "Maven virtual repo (defaults to spring-petclinic-ms-<APPLICATION_KEY>-virtual)"
         required: false
         type: string
-      jf_name:
+      JF_NAME:
         description: "JFrog SaaS hostname (vars.JF_NAME if empty)"
         required: false
         type: string
@@ -80,7 +80,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: package-${{ inputs.application_key }}-${{ github.workflow }}-${{ github.ref }}
+  group: package-${{ inputs.APPLICATION_KEY }}-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -91,13 +91,13 @@ jobs:
   package:
     runs-on: ubuntu-latest
     env:
-      PROJECT_KEY: ${{ inputs.project_key }}
-      APPLICATION_KEY: ${{ inputs.application_key }}
-      BUILD_PROFILE: ${{ inputs.build_profile }}
-      BUILD_NAME: ${{ inputs.build_name || inputs.application_key }}
-      BUILD_ID: ${{ inputs.build_id || format('ga-{0}', github.run_number) }}
-      RT_REPO_VIRTUAL: ${{ inputs.rt_repo_virtual || format('spring-petclinic-ms-{0}-virtual', inputs.application_key) }}
-      JF_URL: https://${{ inputs.jf_name || vars.JF_NAME }}.jfrog.io
+      PROJECT_KEY: ${{ inputs.PROJECT_KEY }}
+      APPLICATION_KEY: ${{ inputs.APPLICATION_KEY }}
+      BUILD_PROFILE: ${{ inputs.BUILD_PROFILE }}
+      BUILD_NAME: ${{ inputs.BUILD_NAME || inputs.APPLICATION_KEY }}
+      BUILD_ID: ${{ inputs.BUILD_ID || format('ga-{0}', github.run_number) }}
+      RT_REPO_VIRTUAL: ${{ inputs.RT_REPO_VIRTUAL || format('spring-petclinic-ms-{0}-virtual', inputs.APPLICATION_KEY) }}
+      JF_URL: https://${{ inputs.JF_NAME || vars.JF_NAME }}.jfrog.io
     steps:
       - name: "Checkout"
         uses: actions/checkout@v4
