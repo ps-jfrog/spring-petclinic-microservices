@@ -226,21 +226,18 @@ jobs:
         run: |
           cat > "${{env.EVD_SPEC_JSON}}" <<EOF
           {
-            "builds": 
-              {
-                "build_name": "${{env.BUILD_NAME}}",
-                "build_id": "${{env.APPLICATION_VERSION}}",
-                "build_promote_stage": "INITIAL_BUILD",
-                "test_coverage": "100",
-                "test_passed": "100",
-                "test_failed": "0",
-                "test_skipped": "100"
-              }
+            "build_name": "${{env.APPLICATION_KEY}}",
+            "build_id": "${{env.APPLICATION_VERSION}}",
+            "build_promote_stage": "INITIAL_BUILD",
+            "test_coverage": "100",
+            "test_passed": "100",
+            "test_failed": "0",
+            "test_skipped": "100"
           }
           EOF
 
           cat ${{env.EVD_SPEC_JSON}}
-          jf evd create --build-name="${{env.BUILD_NAME}}" --build-number="${{env.APPLICATION_VERSION}}" --predicate="${{env.EVD_SPEC_JSON}}" --predicate-type="${{env.PREDICATE_TYPE}}" --key="${{secrets.KRISHNAM_JFROG_EVD_PRIVATEKEY}}" --key-alias="${{secrets.EVIDENCE_KEY_ALIAS}}" --project="${{env.PROJECT_KEY}}"
+          jf evd create --build-name="${{env.APPLICATION_KEY}}" --build-number="${{env.APPLICATION_VERSION}}" --predicate="${{env.EVD_SPEC_JSON}}" --predicate-type="${{env.PREDICATE_TYPE}}" --key="${{secrets.KRISHNAM_JFROG_EVD_PRIVATEKEY}}" --key-alias="${{secrets.EVIDENCE_KEY_ALIAS}}" --project="${{env.PROJECT_KEY}}"
 
       - name: "Summary"
         run: |
