@@ -157,7 +157,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PROJECT_KEY: "spring-petclinic-ms"
-      APPLICATION_KEY: "_AGGREGATE_"
+      APPLICATION_KEY: "all-app-services" #"_AGGREGATE_"
       APPLICATION_VERSION: "ga-mvn-${{ github.run_number }}"
       BUILD_NAME: "multi-apps"
     steps:

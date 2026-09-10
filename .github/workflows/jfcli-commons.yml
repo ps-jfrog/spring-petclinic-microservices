@@ -69,7 +69,8 @@ jobs:
         with:
           distribution: ${{ env.JAVA_DISTRIBUTION }}
           java-version: ${{ env.JAVA_VERSION }}
-          cache: maven
+          cache: 'maven'
+          cache-dependency-path: 'pom.xml'
 
       - name: "Setup JFrog CLI"
         uses: jfrog/setup-jfrog-cli@v5
