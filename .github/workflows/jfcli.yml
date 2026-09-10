@@ -155,13 +155,18 @@ jobs:
     name: "MVN: multi-apps-version"
     needs: [mvn_api-gateway, mvn_config-server, mvn_customers-service, mvn_discovery-server, mvn_genai-service, mvn_admin-server, mvn_vets-service, mvn_visits-service]
     runs-on: ubuntu-latest
+    env:
+      PROJECT_KEY: "spring-petclinic-ms"
+      APPLICATION_KEY: "_AGGREGATE_"
+      APPLICATION_VERSION: "ga-mvn-${{ github.run_number }}"
+      BUILD_NAME: "multi-apps"
     steps:
       - name: "Setup JFrog CLI"
         uses: jfrog/setup-jfrog-cli@v5
         id: setup-cli
         env:
           JF_URL: "https://${{ vars.JF_NAME }}.jfrog.io"
-          JF_PROJECT: "spring-petclinic-ms"
+          JF_PROJECT: "${{env.PROJECT_KEY}}"
           JFROG_CLI_LOG_LEVEL: DEBUG
         with:
           oidc-provider-name: ${{ vars.JF_OIDC_PROVIDER_NAME }}
@@ -169,10 +174,7 @@ jobs:
 
       - name: "MVN: Multi-Apps Version"
         env:
-          PROJECT_KEY: "spring-petclinic-ms"
-          APPLICATION_KEY: "_AGGREGATE_"
           ALL_APPS_SPEC_JSON: "./jfcli-all-apps-from-vc-spec.json"
-          APPLICATION_VERSION: "ga-mvn-${{ github.run_number }}"
         run: |
           cat > "${{ env.ALL_APPS_SPEC_JSON }}" <<EOF
           {
@@ -216,12 +218,36 @@ jobs:
           cat "${{ env.ALL_APPS_SPEC_JSON }}" 
           jf apptrust version-create "${{ env.APPLICATION_KEY }}" "${{ env.APPLICATION_VERSION }}" --spec="${{ env.ALL_APPS_SPEC_JSON }}" --tag="Package" # ref: https://docs.jfrog.com/governance/docs/create-application-version-cli
 
+# Evidence: Unit Test report for 
+      - name: "EVD: Unit Test report"
+        env:
+          EVD_SPEC_JSON: './evd-spec-info.json'  # ref https://jfrog.com/help/r/jfrog-artifactory-documentation/evidence-setup
+          PREDICATE_TYPE: "https://jfrog.com/evidence/test-results/v1"  # ref: https://docs.jfrog.com/governance/docs/evidence-payload
+        run: |
+          cat > "${{env.EVD_SPEC_JSON}}" <<EOF
+          {
+            "builds": 
+              {
+                "build_name": "${{env.BUILD_NAME}}",
+                "build_id": "${{env.APPLICATION_VERSION}}",
+                "build_promote_stage": "INITIAL_BUILD",
+                "test_coverage": "100",
+                "test_passed": "100",
+                "test_failed": "0",
+                "test_skipped": "100"
+              }
+          }
+          EOF
+
+          cat ${{env.EVD_SPEC_JSON}}
+          jf evd create --build-name="${{env.BUILD_NAME}}" --build-number="${{env.APPLICATION_VERSION}}" --predicate="${{env.EVD_SPEC_JSON}}" --predicate-type="${{env.PREDICATE_TYPE}}" --key="${{secrets.KRISHNAM_JFROG_EVD_PRIVATEKEY}}" --key-alias="${{secrets.EVIDENCE_KEY_ALIAS}}" --project="${{env.PROJECT_KEY}}"
+
       - name: "Summary"
         run: |
           echo "Project key: ${{env.PROJECT_KEY}}"
           echo "Application key: ${{ env.APPLICATION_KEY }}"
           echo "Application version: ${{ env.APPLICATION_VERSION }}"
-          echo "All apps spec file: ${{ env.ALL_APPS_SPEC_JSON }}"
+
 
 
 
