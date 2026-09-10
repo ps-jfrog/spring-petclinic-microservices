@@ -14,11 +14,8 @@ on:
         default: "spring-petclinic-ms"
       BUILD_PROFILE:
         description: "MVN or DOCKER"
-        type: choice
+        type: string
         default: "MVN"
-        options:
-          - MVN
-          - DOCKER
       APPLICATION_KEY:
         description: "AppTrust / module key (e.g. api-gateway)"
         required: true
