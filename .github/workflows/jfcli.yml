@@ -150,3 +150,78 @@ jobs:
       BUILD_ID: "ga-mvn${{ github.run_number }}" 
       RT_REPO_VIRTUAL: "spring-petclinic-ms-visits-service-virtual"
 
+  mvn_multi-apps-version:
+    if: ${{ github.event_name != 'workflow_dispatch' }}
+    name: "MVN: multi-apps-version"
+    needs: [mvn_api-gateway, mvn_config-server, mvn_customers-service, mvn_discovery-server, mvn_genai-service, mvn_admin-server, mvn_vets-service, mvn_visits-service]
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Setup JFrog CLI"
+        uses: jfrog/setup-jfrog-cli@v5
+        id: setup-cli
+        env:
+          JF_URL: "https://${{ vars.JF_NAME }}.jfrog.io"
+          JF_PROJECT: "spring-petclinic-ms"
+          JFROG_CLI_LOG_LEVEL: DEBUG
+        with:
+          oidc-provider-name: ${{ vars.JF_OIDC_PROVIDER_NAME }}
+          disable-job-summary: "false"
+
+      - name: "MVN: Multi-Apps Version"
+        env:
+          PROJECT_KEY: "spring-petclinic-ms"
+          APPLICATION_KEY: "_AGGREGATE_"
+          ALL_APPS_SPEC_JSON: "./jfcli-all-apps-from-vc-spec.json"
+          APPLICATION_VERSION: "ga-mvn-${{ github.run_number }}"
+        run: |
+          cat > "${{ env.ALL_APPS_SPEC_JSON }}" <<EOF
+          {
+          "versions": [
+            {
+              "application_key": "api-gateway",
+              "version": "${{ env.APPLICATION_VERSION }}"
+            },
+            {
+              "application_key": "config-server",
+              "version": "${{ env.APPLICATION_VERSION }}"
+            }, 
+            {
+                "application_key": "customers-service",
+                "version": "${{ env.APPLICATION_VERSION }}"
+            },
+            {
+              "application_key": "discovery-server",
+              "version": "${{ env.APPLICATION_VERSION }}"
+            },
+            {
+              "application_key": "genai-service",
+              "version": "${{ env.APPLICATION_VERSION }}"
+            },
+            {
+              "application_key": "admin-server",
+              "version": "${{ env.APPLICATION_VERSION }}"
+            },
+            {
+              "application_key": "vets-service",
+              "version": "${{ env.APPLICATION_VERSION }}"
+            },
+            {
+              "application_key": "visits-service",
+              "version": "${{ env.APPLICATION_VERSION }}"
+            }
+            ]
+          }
+          EOF
+    
+          cat "${{ env.ALL_APPS_SPEC_JSON }}" 
+          jf apptrust version-create "${{ env.APPLICATION_KEY }}" "${{ env.APPLICATION_VERSION }}" --spec="${{ env.ALL_APPS_SPEC_JSON }}" --tag="Package" # ref: https://docs.jfrog.com/governance/docs/create-application-version-cli
+
+      - name: "Summary"
+        run: |
+          echo "Project key: ${{env.PROJECT_KEY}}"
+          echo "Application key: ${{ env.APPLICATION_KEY }}"
+          echo "Application version: ${{ env.APPLICATION_VERSION }}"
+          echo "All apps spec file: ${{ env.ALL_APPS_SPEC_JSON }}"
+
+
+
