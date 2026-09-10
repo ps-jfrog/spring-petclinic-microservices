@@ -69,7 +69,7 @@ jobs:
       APPLICATION_KEY: "config-server"
       BUILD_PROFILE: "MVN"
       BUILD_NAME: "config-server"
-      BUILD_ID: "ga-mvn${{ github.run_number }}" 
+      BUILD_ID: "ga-mvn-${{ github.run_number }}" 
       RT_REPO_VIRTUAL: "spring-petclinic-ms-config-server-virtual"
 
   mvn_customers-service:
@@ -82,7 +82,7 @@ jobs:
       APPLICATION_KEY: "customers-service"
       BUILD_PROFILE: "MVN"
       BUILD_NAME: "customers-service"
-      BUILD_ID: "ga-mvn${{ github.run_number }}" 
+      BUILD_ID: "ga-mvn-${{ github.run_number }}" 
       RT_REPO_VIRTUAL: "spring-petclinic-ms-customers-service-virtual"
 
   mvn_discovery-server:
@@ -95,7 +95,7 @@ jobs:
       APPLICATION_KEY: "discovery-server"
       BUILD_PROFILE: "MVN"
       BUILD_NAME: "discovery-server"
-      BUILD_ID: "ga-mvn${{ github.run_number }}" 
+      BUILD_ID: "ga-mvn-${{ github.run_number }}" 
       RT_REPO_VIRTUAL: "spring-petclinic-ms-discovery-server-virtual"
 
   mvn_genai-service:
@@ -108,7 +108,7 @@ jobs:
       APPLICATION_KEY: "genai-service"
       BUILD_PROFILE: "MVN"
       BUILD_NAME: "genai-service"
-      BUILD_ID: "ga-mvn${{ github.run_number }}" 
+      BUILD_ID: "ga-mvn-${{ github.run_number }}" 
       RT_REPO_VIRTUAL: "spring-petclinic-ms-genai-service-virtual"
 
   mvn_admin-server:
@@ -121,7 +121,7 @@ jobs:
       APPLICATION_KEY: "admin-server"
       BUILD_PROFILE: "MVN"
       BUILD_NAME: "admin-server"
-      BUILD_ID: "ga-mvn${{ github.run_number }}" 
+      BUILD_ID: "ga-mvn-${{ github.run_number }}" 
       RT_REPO_VIRTUAL: "spring-petclinic-ms-admin-server-virtual"
 
   mvn_vets-service:
@@ -134,7 +134,7 @@ jobs:
       APPLICATION_KEY: "vets-service"
       BUILD_PROFILE: "MVN"
       BUILD_NAME: "vets-service"
-      BUILD_ID: "ga-mvn${{ github.run_number }}" 
+      BUILD_ID: "ga-mvn-${{ github.run_number }}" 
       RT_REPO_VIRTUAL: "spring-petclinic-ms-vets-service-virtual"
 
   mvn_visits-service:
@@ -147,7 +147,7 @@ jobs:
       APPLICATION_KEY: "visits-service"
       BUILD_PROFILE: "MVN"
       BUILD_NAME: "visits-service"
-      BUILD_ID: "ga-mvn${{ github.run_number }}" 
+      BUILD_ID: "ga-mvn-${{ github.run_number }}" 
       RT_REPO_VIRTUAL: "spring-petclinic-ms-visits-service-virtual"
 
   mvn_multi-apps-version:
@@ -221,7 +221,7 @@ jobs:
 # Evidence: Unit Test report for 
       - name: "EVD: Unit Test report"
         env:
-          EVD_SPEC_JSON: './evd-spec-info.json'  # ref https://jfrog.com/help/r/jfrog-artifactory-documentation/evidence-setup
+          EVD_SPEC_JSON: './evd-spec-${{env.APPLICATION_KEY}}-${{env.APPLICATION_VERSION}}.json'  # ref https://jfrog.com/help/r/jfrog-artifactory-documentation/evidence-setup
           PREDICATE_TYPE: "https://jfrog.com/evidence/test-results/v1"  # ref: https://docs.jfrog.com/governance/docs/evidence-payload
         run: |
           cat > "${{env.EVD_SPEC_JSON}}" <<EOF

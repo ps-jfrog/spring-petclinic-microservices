@@ -151,7 +151,7 @@ jobs:
 # APP VERSION
       - name: "AppTrust: create application version"
         env:
-          APP_SPEC_JSON: ./jfcli-app-spec.json
+          APP_SPEC_JSON: ./appver-spec-${{env.APPLICATION_KEY}}-${{env.BUILD_ID}}.json
         run: |
           cat > "${{env.APP_SPEC_JSON}}" <<EOF
           {
@@ -173,7 +173,7 @@ jobs:
 # Evidence: Unit Test report for 
       - name: "EVD: Unit Test report"
         env:
-          EVD_SPEC_JSON: './evd-spec-info.json'  # ref https://jfrog.com/help/r/jfrog-artifactory-documentation/evidence-setup
+          EVD_SPEC_JSON: './evd-spec-info-${{env.APPLICATION_KEY}}-${{env.BUILD_ID}}.json'  # ref https://jfrog.com/help/r/jfrog-artifactory-documentation/evidence-setup
           PREDICATE_TYPE: "https://jfrog.com/evidence/test-results/v1"  # ref: https://docs.jfrog.com/governance/docs/evidence-payload
         run: |
           cat > "${{env.EVD_SPEC_JSON}}" <<EOF
