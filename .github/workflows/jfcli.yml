@@ -11,12 +11,12 @@ on:
         options:
           - api-gateway
           - config-server
-          # - customers-service
-          # - discovery-server
-          # - genai-service
-          # - admin-server
-          # - vets-service
-          # - visits-service
+          - customers-service
+          - discovery-server
+          - genai-service
+          - admin-server
+          - vets-service
+          - visits-service
       BUILD_PROFILE:
         description: "Build profile"
         required: true
@@ -25,9 +25,6 @@ on:
         options:
           - MVN
           - DOCKER
-env:
-  GLOBAL_PROJECT_KEY: "spring-petclinic-ms"
-
 permissions:
   contents: read
   id-token: write
@@ -35,32 +32,32 @@ permissions:
 
 jobs:
 # Manual Run: Executes dynamically based on UI selection
-  manual-dispatch:
+  mvn_manual-dispatch:
     if: ${{ github.event_name == 'workflow_dispatch' }}
     name: "Manual: ${{ inputs.APPLICATION_KEY }}"
     uses: ./.github/workflows/jfcli-commons.yml
     secrets: inherit
     with:
-      PROJECT_KEY: "${{ env.GLOBAL_PROJECT_KEY }}"
+      PROJECT_KEY: "spring-petclinic-ms"
       APPLICATION_KEY: ${{ inputs.APPLICATION_KEY }}
       BUILD_PROFILE: ${{ inputs.BUILD_PROFILE }}
       BUILD_NAME: ${{ inputs.APPLICATION_KEY }}
       BUILD_ID: "ga-${{ github.run_number }}"
-      RT_REPO_VIRTUAL: "${{ env.GLOBAL_PROJECT_KEY }}-${{ inputs.APPLICATION_KEY }}-virtual"
+      RT_REPO_VIRTUAL: "spring-petclinic-ms-${{ inputs.APPLICATION_KEY }}-virtual"
 
-# Push Trigger:
+# Push Trigger: 
   mvn_api-gateway:
     if: ${{ github.event_name != 'workflow_dispatch' }}
     name: "MVN: api-gateway"
     uses: ./.github/workflows/jfcli-commons.yml
     secrets: inherit
     with:
-      PROJECT_KEY: "${{ env.GLOBAL_PROJECT_KEY }}"
+      PROJECT_KEY: "spring-petclinic-ms"
       APPLICATION_KEY: "api-gateway"
       BUILD_PROFILE: "MVN"
       BUILD_NAME: "api-gateway"
       BUILD_ID: "ga-mvn-${{ github.run_number }}" 
-      RT_REPO_VIRTUAL: "${{ env.GLOBAL_PROJECT_KEY }}-api-gateway-virtual"
+      RT_REPO_VIRTUAL: "spring-petclinic-ms-api-gateway-virtual"
 
   mvn_config-server:
     if: ${{ github.event_name != 'workflow_dispatch' }}
@@ -68,9 +65,88 @@ jobs:
     uses: ./.github/workflows/jfcli-commons.yml
     secrets: inherit
     with:
-      PROJECT_KEY: "${{ env.GLOBAL_PROJECT_KEY }}"
+      PROJECT_KEY: "spring-petclinic-ms"
       APPLICATION_KEY: "config-server"
       BUILD_PROFILE: "MVN"
       BUILD_NAME: "config-server"
       BUILD_ID: "ga-mvn${{ github.run_number }}" 
-      RT_REPO_VIRTUAL: "${{ env.GLOBAL_PROJECT_KEY }}-config-server-virtual"
+      RT_REPO_VIRTUAL: "spring-petclinic-ms-config-server-virtual"
+
+  mvn_customers-service:
+    if: ${{ github.event_name != 'workflow_dispatch' }}
+    name: "MVN: customers-service"
+    uses: ./.github/workflows/jfcli-commons.yml
+    secrets: inherit
+    with:
+      PROJECT_KEY: "spring-petclinic-ms"
+      APPLICATION_KEY: "customers-service"
+      BUILD_PROFILE: "MVN"
+      BUILD_NAME: "customers-service"
+      BUILD_ID: "ga-mvn${{ github.run_number }}" 
+      RT_REPO_VIRTUAL: "spring-petclinic-ms-customers-service-virtual"
+
+  mvn_discovery-server:
+    if: ${{ github.event_name != 'workflow_dispatch' }}
+    name: "MVN: discovery-server"
+    uses: ./.github/workflows/jfcli-commons.yml
+    secrets: inherit
+    with:
+      PROJECT_KEY: "spring-petclinic-ms"
+      APPLICATION_KEY: "discovery-server"
+      BUILD_PROFILE: "MVN"
+      BUILD_NAME: "discovery-server"
+      BUILD_ID: "ga-mvn${{ github.run_number }}" 
+      RT_REPO_VIRTUAL: "spring-petclinic-ms-discovery-server-virtual"
+
+  mvn_genai-service:
+    if: ${{ github.event_name != 'workflow_dispatch' }}
+    name: "MVN: genai-service"
+    uses: ./.github/workflows/jfcli-commons.yml
+    secrets: inherit
+    with:
+      PROJECT_KEY: "spring-petclinic-ms"
+      APPLICATION_KEY: "genai-service"
+      BUILD_PROFILE: "MVN"
+      BUILD_NAME: "genai-service"
+      BUILD_ID: "ga-mvn${{ github.run_number }}" 
+      RT_REPO_VIRTUAL: "spring-petclinic-ms-genai-service-virtual"
+
+  mvn_admin-server:
+    if: ${{ github.event_name != 'workflow_dispatch' }}
+    name: "MVN: admin-server"
+    uses: ./.github/workflows/jfcli-commons.yml
+    secrets: inherit
+    with:
+      PROJECT_KEY: "spring-petclinic-ms"
+      APPLICATION_KEY: "admin-server"
+      BUILD_PROFILE: "MVN"
+      BUILD_NAME: "admin-server"
+      BUILD_ID: "ga-mvn${{ github.run_number }}" 
+      RT_REPO_VIRTUAL: "spring-petclinic-ms-admin-server-virtual"
+
+  mvn_vets-service:
+    if: ${{ github.event_name != 'workflow_dispatch' }}
+    name: "MVN: vets-service"
+    uses: ./.github/workflows/jfcli-commons.yml
+    secrets: inherit
+    with:
+      PROJECT_KEY: "spring-petclinic-ms"
+      APPLICATION_KEY: "vets-service"
+      BUILD_PROFILE: "MVN"
+      BUILD_NAME: "vets-service"
+      BUILD_ID: "ga-mvn${{ github.run_number }}" 
+      RT_REPO_VIRTUAL: "spring-petclinic-ms-vets-service-virtual"
+
+  mvn_visits-service:
+    if: ${{ github.event_name != 'workflow_dispatch' }}
+    name: "MVN: visits-service"
+    uses: ./.github/workflows/jfcli-commons.yml
+    secrets: inherit
+    with:
+      PROJECT_KEY: "spring-petclinic-ms"
+      APPLICATION_KEY: "visits-service"
+      BUILD_PROFILE: "MVN"
+      BUILD_NAME: "visits-service"
+      BUILD_ID: "ga-mvn${{ github.run_number }}" 
+      RT_REPO_VIRTUAL: "spring-petclinic-ms-visits-service-virtual"
+
