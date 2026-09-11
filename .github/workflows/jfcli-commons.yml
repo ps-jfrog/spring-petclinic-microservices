@@ -251,7 +251,7 @@ jobs:
 
           **Report generated on:** ${{env.NOW_SHORT}}
           JUNITMAKDEOF
-          cat "${{env.EVD_SPEC_MARKDOWN}}""
+          cat "${{env.EVD_SPEC_MARKDOWN}}"
 
           jf evd create --application-key="${{env.BUILD_NAME}}" --application-version="${{env.BUILD_ID}}" --provider-id="${{env.PROVIDER_ID}}" --predicate="${{env.EVD_SPEC_JSON}}" --predicate-type="${{env.PREDICATE_TYPE}}" --markdown="${{env.EVD_SPEC_MARKDOWN}}" --key="${{secrets.KRISHNAM_JFROG_EVD_PRIVATEKEY}}" --key-alias="${{secrets.EVIDENCE_KEY_ALIAS}}" 
 
