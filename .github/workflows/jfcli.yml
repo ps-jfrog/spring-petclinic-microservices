@@ -241,18 +241,20 @@ jobs:
       - name: "EVD: Unit Test report"
         env:
           PROVIDER_ID: "junit"
-          EVD_SPEC_JSON: './evd-spec-${{env.APPLICATION_KEY}}-${{env.APPLICATION_VERSION}}.json'  # ref https://jfrog.com/help/r/jfrog-artifactory-documentation/evidence-setup
+          EVD_SPEC_JSON: './evd-spec-${{env.APPLICATION_KEY}}-${{env.APPLICATION_VERSION}}.json'
           EVD_SPEC_MARKDOWN: './evd-spec-${{env.APPLICATION_KEY}}-${{env.APPLICATION_VERSION}}.md'
-          PREDICATE_TYPE: "https://jfrog.com/evidence/test-results/v1"  # ref: https://docs.jfrog.com/governance/docs/evidence-payload
+          PREDICATE_TYPE: "https://jfrog.com/evidence/test-results/v1"
           JUNIT_TOTAL: 100
           JUNIT_PASSED: 100
           JUNIT_FAILED: 0
           JUNIT_SKIPPED: 0
           JUNIT_DURATION: 60
           SUCCESS_RATE: 100
-          NOW_SHORT: $(date +'%Y-%m-%d %H:%M:%S')
         run: |
-          
+          # Compute date inside the bash execution context without embedded newlines
+          NOW_SHORT="$(date +'%Y-%m-%d %H:%M:%S')"
+
+          # Generate valid JSON without invalid characters
           cat > "${{env.EVD_SPEC_JSON}}" << JUNITEOF
           {
             "test_summary": {
@@ -265,20 +267,20 @@ jobs:
             },
             "test_details": [],
             "test_cases": [],
-            "NOW_SHORT": "${{env.NOW_SHORT}}",
+            "NOW_SHORT": "${NOW_SHORT}",
             "build_name": "${{env.APPLICATION_KEY}}",
             "build_id": "${{env.APPLICATION_VERSION}}",
-            "build_promote_stage": "INITIAL_BUILD
+            "build_promote_stage": "INITIAL_BUILD"
           }
           JUNITEOF
           cat "${{env.EVD_SPEC_JSON}}"
 
-          # Build markdown matching real payload format
+          # Generate Markdown report
           cat > "${{env.EVD_SPEC_MARKDOWN}}" << JUNITMAKDEOF
           # Test Results Report
           ## Test Summary
 
-          **Overall Success Rate:${{env.SUCCESS_RATE}}%**
+          **Overall Success Rate: ${{env.SUCCESS_RATE}}%**
 
           | Metric | Value |
           |--------|-------|
@@ -289,12 +291,13 @@ jobs:
           | **Duration** | ${{env.JUNIT_DURATION}} |
           | **Success Rate** | ${{env.SUCCESS_RATE}}% |
 
-          **Report generated on:** ${{env.NOW_SHORT}}
+          **Report generated on:** ${NOW_SHORT}
           JUNITMAKDEOF
           cat "${{env.EVD_SPEC_MARKDOWN}}"
 
-          jf evd create --application-key="${{env.APPLICATION_KEY}}" --application-version="${{env.APPLICATION_VERSION}}" --provider-id="${{env.PROVIDER_ID}}" --predicate="${{env.EVD_SPEC_JSON}}" --predicate-type="${{env.PREDICATE_TYPE}}" --key="${{secrets.KRISHNAM_JFROG_EVD_PRIVATEKEY}}" --key-alias="${{secrets.EVIDENCE_KEY_ALIAS}}" 
+          jf evd create --application-key="${{env.APPLICATION_KEY}}" --application-version="${{env.APPLICATION_VERSION}}" --provider-id="${{env.PROVIDER_ID}}" --predicate="${{env.EVD_SPEC_JSON}}" --predicate-type="${{env.PREDICATE_TYPE}}" --markdown="${{env.EVD_SPEC_MARKDOWN}}" --key="${{secrets.KRISHNAM_JFROG_EVD_PRIVATEKEY}}" --key-alias="${{secrets.EVIDENCE_KEY_ALIAS}}"
 
+          echo "Evidence attached: test-results"
 
       - name: "Summary"
         run: |
