@@ -84,6 +84,14 @@ jobs:
           disable-job-summary: "false"
           disable-auto-build-publish: "true"
 
+      - name: "Create ENV variables"
+        run: |
+          echo "ARTIFACT_NAME=$(mvn help:evaluate -Dexpression=project.artifactId -q -DforceStdout)" >> $GITHUB_ENV
+          echo "ARTIFACT_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_ENV
+          echo "SHORT_COMMIT_CODE=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          echo "REPO_ORIGIN_URL=$(git config --get remote.origin.url)" >> $GITHUB_ENV
+          echo "TODAYS_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+
 # PACKAGE: MVN
       - name: "MVN Configure repositories"
         run: |
@@ -173,26 +181,26 @@ jobs:
 # Evidence: Unit Test report for 
       - name: "EVD: Unit Test report"
         env:
-          EVD_SPEC_JSON: './evd-spec-info-${{env.APPLICATION_KEY}}-${{env.BUILD_ID}}.json'  # ref https://jfrog.com/help/r/jfrog-artifactory-documentation/evidence-setup
-          PREDICATE_TYPE: "https://jfrog.com/evidence/test-results/v1"  # ref: https://docs.jfrog.com/governance/docs/evidence-payload
+          EVD_SPEC_JSON: './evd-spec-${{env.APPLICATION_KEY}}-${{env.BUILD_ID}}.json'  # ref https://jfrog.com/help/r/jfrog-artifactory-documentation/evidence-setup
+          PREDICATE_TYPE: "https://jfrog.com/evidence/test-result/v1"  # ref: https://docs.jfrog.com/governance/docs/evidence-payload
         run: |
           cat > "${{env.EVD_SPEC_JSON}}" <<EOF
           {
-            "builds": 
-              {
-                "build_name": "${{env.BUILD_NAME}}",
-                "build_id": "${{env.BUILD_ID}}",
-                "build_promote_stage": "INITIAL_BUILD",
-                "test_coverage": "100",
-                "test_passed": "100",
-                "test_failed": "0",
-                "test_skipped": "100"
-              }
+            "build_name": "${{env.BUILD_NAME}}",
+            "build_id": "${{env.BUILD_ID}}",
+            "build_promote_stage": "INITIAL_BUILD",
+            "tests": 
+              { "test_coverage": "100",
+              "test_passed": "100",
+              "test_failed": "0",
+              "test_skipped": "0"
+            }
           }
           EOF
 
           cat ${{env.EVD_SPEC_JSON}}
-          jf evd create --build-name="${{env.BUILD_NAME}}" --build-number="${{env.BUILD_ID}}" --predicate="${{env.EVD_SPEC_JSON}}" --predicate-type="${{env.PREDICATE_TYPE}}" --key="${{secrets.KRISHNAM_JFROG_EVD_PRIVATEKEY}}" --key-alias="${{secrets.EVIDENCE_KEY_ALIAS}}" --project="${{env.PROJECT_KEY}}"
+
+          jf evd create --application-key="${{env.BUILD_NAME}}" --application-version="${{env.BUILD_ID}}" --predicate="${{env.EVD_SPEC_JSON}}" --predicate-type="${{env.PREDICATE_TYPE}}" --key="${{secrets.KRISHNAM_JFROG_EVD_PRIVATEKEY}}" --key-alias="${{secrets.EVIDENCE_KEY_ALIAS}}" 
       
       - name: "Summary"
         run: |

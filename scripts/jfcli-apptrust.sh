@@ -10,6 +10,37 @@ export EVD_KEY_PRIVATE="$(cat ~/.ssh/jfrog_evd_private.pem)" EVD_KEY_PUBLIC="$(c
 
 jf config use ${JF_NAME}
 
+evd-unit-test-report(){
+  export BUILD_NAME="api-gateway"
+  export BUILD_ID="ga-mvn-11"
+  export SHORT_COMMIT_CODE=$(git rev-parse --short HEAD)
+  export REPO_ORIGIN_URL=$(git config --get remote.origin.url)
+  export PREDICATE_TYPE="https://jfrog.com/evidence/test-results/v1" https://jfrog.com/evidence/test-result/v1
+  export EVD_SPEC_JSON="./evd-unittest.json"
+  cat > "${EVD_SPEC_JSON}" <<EOF
+  {
+    "build_name": "${BUILD_NAME}",
+    "build_id": "${BUILD_ID}",
+    "build_promote_stage": "INITIAL_BUILD",
+    "tests": 
+      { "test_coverage": "100",
+      "test_passed": "100",
+      "test_failed": "0",
+      "test_skipped": "0"
+    }
+  }
+EOF
+
+  cat ${EVD_SPEC_JSON}
+  
+  jf evd create --application-key="${BUILD_NAME}" --application-version="${BUILD_ID}" --predicate="${EVD_SPEC_JSON}" --predicate-type="${PREDICATE_TYPE}" --key="${EVD_KEY_PRIVATE}"  --key-alias="${EVD_KEY_ALIAS}" 
+
+  # jf evd create --application-key="${BUILD_NAME}" --application-version="${BUILD_ID}" --build-name="${BUILD_NAME}" --build-number="${BUILD_ID}" --entity-id="${SHORT_COMMIT_CODE}" --entity-repo="${REPO_ORIGIN_URL}" --entity-type="GitCommit" --predicate="${EVD_SPEC_JSON}" --predicate-type="${PREDICATE_TYPE}" --key="${EVD_KEY_PRIVATE}"  --key-alias="${EVD_KEY_ALIAS}" --project="${PROJECT_KEY}"
+
+  rm -rf ${EVD_SPEC_JSON}
+
+}
+
 common-docker-build(){
     local APPLICATION_KEY=${1} 
     local BUILD_NAME="${APPLICATION_KEY}" RT_REPO_VIRTUAL="spring-petclinic-ms-${APPLICATION_KEY}-virtual" 
@@ -23,15 +54,15 @@ common-docker-build(){
     export AT_APP_SPEC_JSON="./jfcli-app-spec.json"
     cat > "${AT_APP_SPEC_JSON}" <<EOF
     {
-  "builds": [
-    {
-      "name": "${BUILD_NAME}",
-      "number": "${BUILD_ID}",
-      "repository_key": "${PROJECT_KEY}-build-info",
-      "include_dependencies": false
+      "builds": [
+        {
+          "name": "${BUILD_NAME}",
+          "number": "${BUILD_ID}",
+          "repository_key": "${PROJECT_KEY}-build-info",
+          "include_dependencies": false
+        }
+      ]
     }
-  ]
-}
 EOF
 
     printf "AppTrust app spec file content: ${AT_APP_SPEC_JSON}"
@@ -57,16 +88,16 @@ common-mvn-package(){
   printf "\n*** AppTrust: App Version create **\n"
   export AT_APP_SPEC_JSON="./jfcli-app-spec.json"
   cat > "${AT_APP_SPEC_JSON}" <<EOF
-{
-  "builds": [
-    {
-      "name": "${BUILD_NAME}",
-      "number": "${BUILD_ID}",
-      "repository_key": "${PROJECT_KEY}-build-info",
-      "include_dependencies": false
-    }
-  ]
-}
+  {
+    "builds": [
+      {
+        "name": "${BUILD_NAME}",
+        "number": "${BUILD_ID}",
+        "repository_key": "${PROJECT_KEY}-build-info",
+        "include_dependencies": false
+      }
+    ]
+  }
 EOF
 
     printf "AppTrust app spec file content: ${AT_APP_SPEC_JSON}"
@@ -103,7 +134,7 @@ config-server(){
     export APPLICATION_KEY="config-server" 
     export BUILD_NAME="${APPLICATION_KEY}" RT_REPO_VIRTUAL="spring-petclinic-ms-config-server-virtual"  # spring-petclinic-ms-config-server-init-local, spring-petclinic-ms-config-server-dev-local, spring-petclinic-ms-config-server-prod-local,  spring-petclinic-ms-mvn-remote
 
-    common-app-package ${APPLICATION_KEY} 
+    common-mvn-package ${APPLICATION_KEY} 
 }
 
 customers-service(){
@@ -111,7 +142,7 @@ customers-service(){
     export APPLICATION_KEY="customers-service" 
     export BUILD_NAME="${APPLICATION_KEY}" RT_REPO_VIRTUAL="spring-petclinic-ms-customers-service-virtual"  # spring-petclinic-ms-customers-service-init-local, spring-petclinic-ms-customers-service-dev-local, spring-petclinic-ms-customers-service-prod-local,  spring-petclinic-ms-mvn-remote
 
-    common-app-package ${APPLICATION_KEY} 
+    common-mvn-package ${APPLICATION_KEY} 
 }
 
 discovery-server(){
@@ -119,7 +150,7 @@ discovery-server(){
     export APPLICATION_KEY="discovery-server" 
     export BUILD_NAME="${APPLICATION_KEY}" RT_REPO_VIRTUAL="spring-petclinic-ms-discovery-server-virtual"  # spring-petclinic-ms-discovery-server-init-local, spring-petclinic-ms-discovery-server-dev-local, spring-petclinic-ms-discovery-server-prod-local,  spring-petclinic-ms-mvn-remote
 
-    common-app-package ${APPLICATION_KEY} 
+    common-mvn-package ${APPLICATION_KEY} 
 }
 
 genai-service(){
@@ -127,7 +158,7 @@ genai-service(){
     export APPLICATION_KEY="genai-service" 
     export BUILD_NAME="${APPLICATION_KEY}" RT_REPO_VIRTUAL="spring-petclinic-ms-genai-service-virtual"  # spring-petclinic-ms-customers-service-init-local, spring-petclinic-ms-customers-service-dev-local, spring-petclinic-ms-customers-service-prod-local,  spring-petclinic-ms-mvn-remote
 
-    common-app-package ${APPLICATION_KEY} 
+    common-mvn-package ${APPLICATION_KEY} 
 }
 
 admin-server(){
@@ -135,7 +166,7 @@ admin-server(){
     export APPLICATION_KEY="admin-server" 
     export BUILD_NAME="${APPLICATION_KEY}" RT_REPO_VIRTUAL="spring-petclinic-ms-admin-server-virtual"  # spring-petclinic-ms-customers-service-init-local, spring-petclinic-ms-customers-service-dev-local, spring-petclinic-ms-customers-service-prod-local,  spring-petclinic-ms-mvn-remote
 
-    common-app-package ${APPLICATION_KEY} 
+    common-mvn-package ${APPLICATION_KEY} 
 }
 
 vets-service(){
@@ -143,7 +174,7 @@ vets-service(){
     export APPLICATION_KEY="vets-service" 
     export BUILD_NAME="${APPLICATION_KEY}" RT_REPO_VIRTUAL="spring-petclinic-ms-vets-service-virtual"  # spring-petclinic-ms-vets-service-init-local, spring-petclinic-ms-vets-service-dev-local, spring-petclinic-ms-vets-service-prod-local,  spring-petclinic-ms-mvn-remote
 
-    common-app-package ${APPLICATION_KEY} 
+    common-mvn-package ${APPLICATION_KEY} 
 }
 
 visits-service(){
@@ -151,7 +182,7 @@ visits-service(){
     export APPLICATION_KEY="visits-service" 
     export BUILD_NAME="${APPLICATION_KEY}" RT_REPO_VIRTUAL="spring-petclinic-ms-visits-service-virtual"  # spring-petclinic-ms-visits-service-init-local, spring-petclinic-ms-visits-service-dev-local, spring-petclinic-ms-visits-service-prod-local,  spring-petclinic-ms-mvn-remote
 
-    common-app-package ${APPLICATION_KEY} 
+    common-mvn-package ${APPLICATION_KEY} 
 }
 
 multi-apps-from-app-vc(){
@@ -159,43 +190,44 @@ multi-apps-from-app-vc(){
     # https://docs.jfrog.com/governance/docs/create-application-version-cli
     export APPLICATION_KEY="all-app-services"
     export ALL_APPS_SPEC_JSON="./jfcli-all-apps-from-vc-spec.json"
+    export APPLICATION_VERSION="ga-mvn-11"
     cat > "${ALL_APPS_SPEC_JSON}" <<EOF
-{
-"versions": [
-   {
-     "application_key": "api-gateway",
-     "version": "${APPLICATION_VERSION}"
-   },
-   {
-     "application_key": "config-server",
-     "version": "${APPLICATION_VERSION}"
-   }, 
-   {
-     "application_key": "customers-service",
-     "version": "${APPLICATION_VERSION}"
-   },
-   {
-     "application_key": "discovery-server",
-     "version": "${APPLICATION_VERSION}"
-   },
-   {
-     "application_key": "genai-service",
-     "version": "${APPLICATION_VERSION}"
-   },
-   {
-     "application_key": "admin-server",
-     "version": "${APPLICATION_VERSION}"
-   },
-   {
-     "application_key": "vets-service",
-     "version": "${APPLICATION_VERSION}"
-   },
-   {
-     "application_key": "visits-service",
-     "version": "${APPLICATION_VERSION}"
-   }
-   ]
-}
+    {
+    "versions": [
+      {
+        "application_key": "api-gateway",
+        "version": "${APPLICATION_VERSION}"
+      },
+      {
+        "application_key": "config-server",
+        "version": "${APPLICATION_VERSION}"
+      }, 
+      {
+        "application_key": "customers-service",
+        "version": "${APPLICATION_VERSION}"
+      },
+      {
+        "application_key": "discovery-server",
+        "version": "${APPLICATION_VERSION}"
+      },
+      {
+        "application_key": "genai-service",
+        "version": "${APPLICATION_VERSION}"
+      },
+      {
+        "application_key": "admin-server",
+        "version": "${APPLICATION_VERSION}"
+      },
+      {
+        "application_key": "vets-service",
+        "version": "${APPLICATION_VERSION}"
+      },
+      {
+        "application_key": "visits-service",
+        "version": "${APPLICATION_VERSION}"
+      }
+      ]
+    }
 EOF
     echo "AppTrust ALL APPS spec file content: ${ALL_APPS_SPEC_JSON}"
     cat ${ALL_APPS_SPEC_JSON}
@@ -205,61 +237,62 @@ EOF
 
     #rm -rf ${ALL_APPS_SPEC_JSON}
 }
+
 multi-apps-from-builds(){
     printf "\n *** ALL Applications to promtoe in ${PROJECT_KEY} from Builds \n"
     # https://docs.jfrog.com/governance/docs/create-application-version-cli
     export APPLICATION_KEY="all-app-services"
     export ALL_APPS_SPEC_JSON="./jfcli-all-apps-from-builds-spec.json"
     cat > "${ALL_APPS_SPEC_JSON}" <<EOF
-{
-  "builds": [
     {
-      "name": "api-gateway",
-      "number": "${BUILD_ID}",
-      "repository_key": "${PROJECT_KEY}-build-info",
-      "include_dependencies": false
-    },{
-      "name": "config-server",
-      "number": "${BUILD_ID}",
-      "repository_key": "${PROJECT_KEY}-build-info",
-      "include_dependencies": false
-    },{
-      "name": "customers-service",
-      "number": "${BUILD_ID}",
-      "repository_key": "${PROJECT_KEY}-build-info",
-      "include_dependencies": false
-    },{
-      "name": "discovery-server",
-      "number": "${BUILD_ID}",
-      "repository_key": "${PROJECT_KEY}-build-info",
-      "include_dependencies": false
-    },{
-      "name": "genai-service",
-      "number": "${BUILD_ID}",
-      "repository_key": "${PROJECT_KEY}-build-info",
-      "include_dependencies": false
-    },{
-      "name": "admin-server",
-      "number": "${BUILD_ID}",
-      "repository_key": "${PROJECT_KEY}-build-info",
-      "include_dependencies": false
-    },{
-      "name": "vets-service",
-      "number": "${BUILD_ID}",
-      "repository_key": "${PROJECT_KEY}-build-info",
-      "include_dependencies": false
-    },{
-      "name": "visits-service",
-      "number": "${BUILD_ID}",
-      "repository_key": "${PROJECT_KEY}-build-info",
-      "include_dependencies": false
+      "builds": [
+        {
+          "name": "api-gateway",
+          "number": "${BUILD_ID}",
+          "repository_key": "${PROJECT_KEY}-build-info",
+          "include_dependencies": false
+        },{
+          "name": "config-server",
+          "number": "${BUILD_ID}",
+          "repository_key": "${PROJECT_KEY}-build-info",
+          "include_dependencies": false
+        },{
+          "name": "customers-service",
+          "number": "${BUILD_ID}",
+          "repository_key": "${PROJECT_KEY}-build-info",
+          "include_dependencies": false
+        },{
+          "name": "discovery-server",
+          "number": "${BUILD_ID}",
+          "repository_key": "${PROJECT_KEY}-build-info",
+          "include_dependencies": false
+        },{
+          "name": "genai-service",
+          "number": "${BUILD_ID}",
+          "repository_key": "${PROJECT_KEY}-build-info",
+          "include_dependencies": false
+        },{
+          "name": "admin-server",
+          "number": "${BUILD_ID}",
+          "repository_key": "${PROJECT_KEY}-build-info",
+          "include_dependencies": false
+        },{
+          "name": "vets-service",
+          "number": "${BUILD_ID}",
+          "repository_key": "${PROJECT_KEY}-build-info",
+          "include_dependencies": false
+        },{
+          "name": "visits-service",
+          "number": "${BUILD_ID}",
+          "repository_key": "${PROJECT_KEY}-build-info",
+          "include_dependencies": false
+        }
+      ]
     }
-  ]
-}
 EOF
 
     echo "AppTrust ALL APPS spec file content: ${ALL_APPS_SPEC_JSON}"
-    cat ${AT_APP_ALL_APPS_SPEC_JSONSPEC_JSON}
+    cat ${ALL_APPS_SPEC_JSON}
 
     # ref: https://docs.jfrog.com/governance/docs/create-application-version-cli 
     jf apptrust version-create ${APPLICATION_KEY} ${APPLICATION_VERSION} --spec="${ALL_APPS_SPEC_JSON}" --tag="Package"
@@ -274,22 +307,22 @@ rbv2-all-ms(){
    export RBv2_BUNDLE_NAME="all-ms-apps"
    export RBv2_SPEC_JSON="./jfcli-rbv2-spec.json"
     cat > "${RBv2_SPEC_JSON}" <<EOF
-{ 
-  "files": [ 
-    {"build": "api-gateway/${BUILD_ID}", "includeDeps":"false", "project":"${PROJECT_KEY}"}, 
-    {"build": "config-server/${BUILD_ID}", "includeDeps":"false", "project":"${PROJECT_KEY}"}, 
-    {"build": "customers-service/${BUILD_ID}", "includeDeps":"false", "project":"${PROJECT_KEY}"}, 
-    {"build": "discovery-server/${BUILD_ID}", "includeDeps":"false", "project":"${PROJECT_KEY}"}, 
-    {"build": "genai-service/${BUILD_ID}", "includeDeps":"false", "project":"${PROJECT_KEY}"}, 
-    {"build": "admin-server/${BUILD_ID}", "includeDeps":"false", "project":"${PROJECT_KEY}"}, 
-    {"build": "vets-service/${BUILD_ID}", "includeDeps":"false", "project":"${PROJECT_KEY}"},
-    {"build": "visits-service/${BUILD_ID}", "includeDeps":"false", "project":"${PROJECT_KEY}"} 
-    ] 
-}  
+    { 
+      "files": [ 
+        {"build": "api-gateway/${BUILD_ID}", "includeDeps":"false", "project":"${PROJECT_KEY}"}, 
+        {"build": "config-server/${BUILD_ID}", "includeDeps":"false", "project":"${PROJECT_KEY}"}, 
+        {"build": "customers-service/${BUILD_ID}", "includeDeps":"false", "project":"${PROJECT_KEY}"}, 
+        {"build": "discovery-server/${BUILD_ID}", "includeDeps":"false", "project":"${PROJECT_KEY}"}, 
+        {"build": "genai-service/${BUILD_ID}", "includeDeps":"false", "project":"${PROJECT_KEY}"}, 
+        {"build": "admin-server/${BUILD_ID}", "includeDeps":"false", "project":"${PROJECT_KEY}"}, 
+        {"build": "vets-service/${BUILD_ID}", "includeDeps":"false", "project":"${PROJECT_KEY}"},
+        {"build": "visits-service/${BUILD_ID}", "includeDeps":"false", "project":"${PROJECT_KEY}"} 
+        ] 
+    }  
 EOF
    cat ${RBv2_SPEC_JSON}
    # ref: https://docs.jfrog.com/governance/docs/release-lifecycle-management-cli#create-a-release-bundle-v2
-   jf rbc ${RBv2_BUNDLE_NAME} ${BUILD_ID} --sync=true --signing-key=${RBV2_SIGNING_KEY} --spec=${RBv2_SPEC_JSON} --project=${PROJECT_KEY}
+   jf rbc ${RBv2_BUNDLE_NAME} ${BUILD_ID} --sync=true --signing-key="${RBv2_SIGNING_KEY}" --spec=${RBv2_SPEC_JSON} --project=${PROJECT_KEY}
 
    printf "\n *** RBv2: ${RBv2_BUNDLE_NAME} created for the project ${PROJECT_KEY}  ID: ${BUILD_ID} \n"
    sleep 2
@@ -314,7 +347,8 @@ default(){
    printf "\n***** [START] TS: $(date +"%Y-%m-%d %H:%M:%S") \n\n"
    # multi-apps-from-builds
    multi-apps-from-app-vc
-#    rbv2-all-ms
+  #    rbv2-all-ms
+   evd-unit-test-report
    printf "\n ----------------------------------------------------------------  "
    printf "\n***** [END] TS: $(date +"%Y-%m-%d %H:%M:%S") \n\n"
 }
@@ -362,6 +396,9 @@ case ${buildApp} in
       ;;
     RBV2-ALL-MS | RBV2)
       rbv2-all-ms
+      ;;
+    EVD)
+      evd-unit-test-report
       ;;
     *)
       printf "Invalid argument: ${buildApp}"

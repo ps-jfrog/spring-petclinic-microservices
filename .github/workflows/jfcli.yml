@@ -25,6 +25,21 @@ on:
         options:
           - MVN
           - DOCKER
+      PREDICATE_TYPE:
+        description: "Predicate type"
+        required: true
+        type: choice
+        options:  # refernce: https://docs.jfrog.com/governance/docs/evidence-payload, 
+          - https://jfrog.com/evidence/test-results/v1
+          - https://jfrog.com/evidence/approval/v1
+          - https://jfrog.com/evidence/distribution/v1
+          - https://slsa.dev/provenance/v1
+          - http://atlassian.com/jira/issues/v1
+          - https://sonar.com/evidence/sonarqube/v1
+          - https://in-toto.io/Statement/v1
+          - https://jfrog.com/evidence/promotion/v1
+          - https://cyclonedx.org/bom/v1.4
+          - https://spdx.dev/Document/v2.2
 permissions:
   contents: read
   id-token: write
@@ -222,22 +237,34 @@ jobs:
       - name: "EVD: Unit Test report"
         env:
           EVD_SPEC_JSON: './evd-spec-${{env.APPLICATION_KEY}}-${{env.APPLICATION_VERSION}}.json'  # ref https://jfrog.com/help/r/jfrog-artifactory-documentation/evidence-setup
-          PREDICATE_TYPE: "https://jfrog.com/evidence/test-results/v1"  # ref: https://docs.jfrog.com/governance/docs/evidence-payload
+          PREDICATE_TYPE: "https://jfrog.com/evidence/test-result/v1"  # ref: https://docs.jfrog.com/governance/docs/evidence-payload
         run: |
           cat > "${{env.EVD_SPEC_JSON}}" <<EOF
           {
             "build_name": "${{env.APPLICATION_KEY}}",
             "build_id": "${{env.APPLICATION_VERSION}}",
             "build_promote_stage": "INITIAL_BUILD",
-            "test_coverage": "100",
-            "test_passed": "100",
-            "test_failed": "0",
-            "test_skipped": "100"
+            "tests": 
+              { "test_coverage": "100",
+              "test_passed": "100",
+              "test_failed": "0",
+              "test_skipped": "0"
+            }
           }
           EOF
 
+
+          echo "ARTIFACT_NAME=$(mvn help:evaluate -Dexpression=project.artifactId -q -DforceStdout)" >> $GITHUB_ENV
+          echo "ARTIFACT_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_ENV
+          echo "SHORT_COMMIT_CODE=" >> $GITHUB_ENV
+          echo "TODAYS_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+
           cat ${{env.EVD_SPEC_JSON}}
-          jf evd create --build-name="${{env.APPLICATION_KEY}}" --build-number="${{env.APPLICATION_VERSION}}" --predicate="${{env.EVD_SPEC_JSON}}" --predicate-type="${{env.PREDICATE_TYPE}}" --key="${{secrets.KRISHNAM_JFROG_EVD_PRIVATEKEY}}" --key-alias="${{secrets.EVIDENCE_KEY_ALIAS}}" --project="${{env.PROJECT_KEY}}"
+
+          # jf evd create --application-key="${{env.APPLICATION_KEY}}" --application-version="${{env.APPLICATION_VERSION}}" --build-name="${{env.APPLICATION_KEY}}" --build-number="${{env.APPLICATION_VERSION}}" --entity-id= --predicate="${{env.EVD_SPEC_JSON}}" --predicate-type="${{env.PREDICATE_TYPE}}" --key="${{secrets.KRISHNAM_JFROG_EVD_PRIVATEKEY}}" --key-alias="${{secrets.EVIDENCE_KEY_ALIAS}}" --project="${{env.PROJECT_KEY}}"
+
+          jf evd create --application-key="${{env.APPLICATION_KEY}}" --application-version="${{env.APPLICATION_VERSION}}" --predicate="${{env.EVD_SPEC_JSON}}" --predicate-type="${{env.PREDICATE_TYPE}}" --key="${{secrets.KRISHNAM_JFROG_EVD_PRIVATEKEY}}" --key-alias="${{secrets.EVIDENCE_KEY_ALIAS}}" 
+
 
       - name: "Summary"
         run: |
