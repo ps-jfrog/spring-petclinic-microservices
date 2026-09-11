@@ -184,6 +184,7 @@ jobs:
         env:
           EVD_SPEC_JSON: './evd-spec-${{env.APPLICATION_KEY}}-${{env.BUILD_ID}}.json'  # ref https://jfrog.com/help/r/jfrog-artifactory-documentation/evidence-setup
           PREDICATE_TYPE: "https://jfrog.com/evidence/build-signature/v1"
+          PROVIDER_ID: "sign"
         run: |
           cat > "${{env.EVD_SPEC_JSON}}" << SIGNEOF
           {
@@ -193,9 +194,9 @@ jobs:
           SIGNEOF
           cat "${{env.EVD_SPEC_JSON}}"
       
-          jf evd create --build-name ${{ vars.BUILD_NAME }} --build-number=${{env.BUILD_ID}} --predicate=""${{env.EVD_SPEC_JSON}}" --predicate-type="${{env.PREDICATE_TYPE}}" --key="${{secrets.KRISHNAM_JFROG_EVD_PRIVATEKEY}}" --key-alias="${{secrets.EVIDENCE_KEY_ALIAS}}" 
+          jf evd create --application-key="${{env.BUILD_NAME}}" --application-version="${{env.BUILD_ID}}" --provider-id="${{env.PROVIDER_ID}}" --predicate="${{env.EVD_SPEC_JSON}}" --predicate-type="${{env.PREDICATE_TYPE}}" --key="${{secrets.KRISHNAM_JFROG_EVD_PRIVATEKEY}}" --key-alias="${{secrets.EVIDENCE_KEY_ALIAS}}" 
 
-          echo " Evidence attached: `build-signature` "
+          echo " Evidence attached: build-signature "
 
    ## Unit Test report for ${{env.APPLICATION_KEY}}
       - name: "EVD: Unit Test report"
@@ -212,7 +213,6 @@ jobs:
           SUCCESS_RATE: 100
           NOW_SHORT: $(date +'%Y-%m-%d %H:%M:%S')
         run: |
-          
           cat > "${{env.EVD_SPEC_JSON}}" << JUNITEOF
           {
             "test_summary": {
@@ -235,28 +235,27 @@ jobs:
 
           # Build markdown matching real payload format
           cat > "${{env.EVD_SPEC_MARKDOWN}}" << JUNITMAKDEOF
-          {
-            echo "# Test Results Report"
-            echo ""
-            echo "## Test Summary"
-            echo ""
-            echo "**Overall Success Rate: ${SUCCESS_RATE}%**"
-            echo ""
-            echo "| Metric | Value |"
-            echo "|--------|-------|"
-            echo "| **Total Tests** | ${{env.JUNIT_TOTAL}} |"
-            echo "| **Passed** | ${{env.JUNIT_PASSED}} |"
-            echo "| **Failed** | ${{env.JUNIT_FAILED}} |"
-            echo "| **Skipped** | ${{env.JUNIT_SKIPPED}} |"
-            echo "| **Duration** | ${{env.JUNIT_DURATION}} |"
-            echo "| **Success Rate** | ${{env.SUCCESS_RATE}}% |"
-            echo ""
-            echo "**Report generated on:** ${{env.NOW_SHORT}}"
-          } 
+          # Test Results Report
+          ## Test Summary
+
+          **Overall Success Rate:${{env.SUCCESS_RATE}}%**
+
+          | Metric | Value |
+          |--------|-------|
+          | **Total Tests** | ${{env.JUNIT_TOTAL}} |
+          | **Passed** | ${{env.JUNIT_PASSED}} |
+          | **Failed** | ${{env.JUNIT_FAILED}} |
+          | **Skipped** | ${{env.JUNIT_SKIPPED}} |
+          | **Duration** | ${{env.JUNIT_DURATION}} |
+          | **Success Rate** | ${{env.SUCCESS_RATE}}% |
+
+          **Report generated on:** ${{env.NOW_SHORT}}
           JUNITMAKDEOF
           cat "${{env.EVD_SPEC_MARKDOWN}}""
 
-          jf evd create --application-key="${{env.BUILD_NAME}}" --application-version="${{env.BUILD_ID}}" --provider-id="${{env.PROVIDER_ID}}" --predicate="${{env.EVD_SPEC_JSON}}" --predicate-type="${{env.PREDICATE_TYPE}}" --key="${{secrets.KRISHNAM_JFROG_EVD_PRIVATEKEY}}" --key-alias="${{secrets.EVIDENCE_KEY_ALIAS}}" 
+          jf evd create --application-key="${{env.BUILD_NAME}}" --application-version="${{env.BUILD_ID}}" --provider-id="${{env.PROVIDER_ID}}" --predicate="${{env.EVD_SPEC_JSON}}" --predicate-type="${{env.PREDICATE_TYPE}}" --markdown="${{env.EVD_SPEC_MARKDOWN}}" --key="${{secrets.KRISHNAM_JFROG_EVD_PRIVATEKEY}}" --key-alias="${{secrets.EVIDENCE_KEY_ALIAS}}" 
+
+          echo " Evidence attached: test-results "
 
       - name: "Summary"
         run: |

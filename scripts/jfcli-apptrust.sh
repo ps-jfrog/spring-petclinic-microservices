@@ -10,14 +10,34 @@ export EVD_KEY_PRIVATE="$(cat ~/.ssh/jfrog_evd_private.pem)" EVD_KEY_PUBLIC="$(c
 
 jf config use ${JF_NAME}
 
+evd-sign-app-version(){
+  export BUILD_NAME="api-gateway"
+  export BUILD_ID="ga-mvn-13"
+  export EVD_SPEC_JSON="./evd-sign-app-version.json"
+  export PREDICATE_TYPE="https://jfrog.com/evidence/build-signature/v1"
+  cat > "${EVD_SPEC_JSON}" <<SIGNEOF
+  {
+    "actor": "krishna",
+    "date": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'"
+  }
+SIGNEOF
+
+  cat "${EVD_SPEC_JSON}"
+
+  jf evd create --application-key="${BUILD_NAME}" --application-version="${BUILD_ID}" --provider-id="sign" --predicate="${EVD_SPEC_JSON}" --predicate-type="${PREDICATE_TYPE}" --key="${EVD_KEY_PRIVATE}"  --key-alias="${EVD_KEY_ALIAS}"   
+  echo " Evidence attached: build-signature "
+  rm -rf ${EVD_SPEC_JSON}
+
+}
+
 evd-unit-test-report(){
   export BUILD_NAME="api-gateway"
-  export BUILD_ID="ga-mvn-11"
+  export BUILD_ID="ga-mvn-13"
   export SHORT_COMMIT_CODE=$(git rev-parse --short HEAD)
   export REPO_ORIGIN_URL=$(git config --get remote.origin.url)
-  export PREDICATE_TYPE="https://jfrog.com/evidence/test-results/v1" https://jfrog.com/evidence/test-result/v1
-  export EVD_SPEC_JSON="./evd-unittest.json"
-  cat > "${EVD_SPEC_JSON}" <<EOF
+  export PREDICATE_TYPE="https://jfrog.com/evidence/test-results/v1" # https://jfrog.com/evidence/test-result/v1
+  export EVD_SPEC_JSON="./evd-unittest.json" EVD_SPEC_MARKDOWN="./evd-unittest.md"
+  cat > "${EVD_SPEC_JSON}" <<JUNITEOF
   {
     "build_name": "${BUILD_NAME}",
     "build_id": "${BUILD_ID}",
@@ -29,16 +49,35 @@ evd-unit-test-report(){
       "test_skipped": "0"
     }
   }
-EOF
-
+JUNITEOF
   cat ${EVD_SPEC_JSON}
-  
-  jf evd create --application-key="${BUILD_NAME}" --application-version="${BUILD_ID}" --predicate="${EVD_SPEC_JSON}" --predicate-type="${PREDICATE_TYPE}" --key="${EVD_KEY_PRIVATE}"  --key-alias="${EVD_KEY_ALIAS}" 
+# Build markdown matching real payload format
+  cat > "${EVD_SPEC_MARKDOWN}" << JUNITMAKDEOF
+  # Test Results Report
 
-  # jf evd create --application-key="${BUILD_NAME}" --application-version="${BUILD_ID}" --build-name="${BUILD_NAME}" --build-number="${BUILD_ID}" --entity-id="${SHORT_COMMIT_CODE}" --entity-repo="${REPO_ORIGIN_URL}" --entity-type="GitCommit" --predicate="${EVD_SPEC_JSON}" --predicate-type="${PREDICATE_TYPE}" --key="${EVD_KEY_PRIVATE}"  --key-alias="${EVD_KEY_ALIAS}" --project="${PROJECT_KEY}"
+## Test Summary
 
+**Overall Success Rate:100%**
+
+| Metric | Value |
+|--------|-------|
+| **Total Tests** | 100 |
+| **Passed** | 100 |
+| **Failed** | 0 |
+| **Skipped** | 0 |
+| **Duration** | 60 |
+| **Success Rate** | 100% |
+
+**Report generated on:** $(date +'%Y-%m-%d %H:%M:%S')
+JUNITMAKDEOF
+  cat "${EVD_SPEC_MARKDOWN}"
+
+  jf evd create --application-key="${BUILD_NAME}" --application-version="${BUILD_ID}" --provider-id="junit" --predicate="${EVD_SPEC_JSON}" --predicate-type="${PREDICATE_TYPE}" --markdown="${EVD_SPEC_MARKDOWN}" --key="${EVD_KEY_PRIVATE}"  --key-alias="${EVD_KEY_ALIAS}" 
+
+
+  echo " Evidence attached: test-results "
   rm -rf ${EVD_SPEC_JSON}
-
+  rm -rf ${EVD_SPEC_MARKDOWN}
 }
 
 common-docker-build(){
@@ -398,6 +437,7 @@ case ${buildApp} in
       rbv2-all-ms
       ;;
     EVD)
+      evd-sign-app-version
       evd-unit-test-report
       ;;
     *)

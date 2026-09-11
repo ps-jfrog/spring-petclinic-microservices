@@ -275,30 +275,27 @@ jobs:
 
           # Build markdown matching real payload format
           cat > "${{env.EVD_SPEC_MARKDOWN}}" << JUNITMAKDEOF
-          {
-            echo "# Test Results Report"
-            echo ""
-            echo "## Test Summary"
-            echo ""
-            echo "**Overall Success Rate: ${SUCCESS_RATE}%**"
-            echo ""
-            echo "| Metric | Value |"
-            echo "|--------|-------|"
-            echo "| **Total Tests** | ${{env.JUNIT_TOTAL}} |"
-            echo "| **Passed** | ${{env.JUNIT_PASSED}} |"
-            echo "| **Failed** | ${{env.JUNIT_FAILED}} |"
-            echo "| **Skipped** | ${{env.JUNIT_SKIPPED}} |"
-            echo "| **Duration** | ${{env.JUNIT_DURATION}} |"
-            echo "| **Success Rate** | ${{env.SUCCESS_RATE}}% |"
-            echo ""
-            echo "**Report generated on:** ${{env.NOW_SHORT}}"
-          } 
+          # Test Results Report
+          ## Test Summary
+
+          **Overall Success Rate:${{env.SUCCESS_RATE}}%**
+
+          | Metric | Value |
+          |--------|-------|
+          | **Total Tests** | ${{env.JUNIT_TOTAL}} |
+          | **Passed** | ${{env.JUNIT_PASSED}} |
+          | **Failed** | ${{env.JUNIT_FAILED}} |
+          | **Skipped** | ${{env.JUNIT_SKIPPED}} |
+          | **Duration** | ${{env.JUNIT_DURATION}} |
+          | **Success Rate** | ${{env.SUCCESS_RATE}}% |
+
+          **Report generated on:** ${{env.NOW_SHORT}}
           JUNITMAKDEOF
-          cat "${{env.EVD_SPEC_MARKDOWN}}""
+          cat "${{env.EVD_SPEC_MARKDOWN}}"
 
           jf evd create --application-key="${{env.APPLICATION_KEY}}" --application-version="${{env.APPLICATION_VERSION}}" --provider-id="${{env.PROVIDER_ID}}" --predicate="${{env.EVD_SPEC_JSON}}" --predicate-type="${{env.PREDICATE_TYPE}}" --key="${{secrets.KRISHNAM_JFROG_EVD_PRIVATEKEY}}" --key-alias="${{secrets.EVIDENCE_KEY_ALIAS}}" 
 
-          
+
       - name: "Summary"
         run: |
           echo "Project key: ${{env.PROJECT_KEY}}"
