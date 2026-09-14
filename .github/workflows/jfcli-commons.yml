@@ -38,7 +38,6 @@ permissions:
   contents: read
   id-token: write
   actions: read
-  attestations: write # Required for actions/attest-build-provenance
 
 concurrency:
   group: package-${{ inputs.APPLICATION_KEY }}-${{ github.workflow }}-${{ github.ref }}
