@@ -189,7 +189,6 @@ jobs:
 # Evidence
    ## GitHub Attestation
       - name: "EVD: Attach GitHub Attestation"
-        if: ${{ env.BUILD_PROFILE == 'MVN' }}
         env:
           PROVIDER_ID: "github-attestation"
           EVD_SPEC_JSON: './evd-spec-attestation-${{env.APPLICATION_KEY}}-${{env.BUILD_ID}}.json'
