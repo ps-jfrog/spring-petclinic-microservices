@@ -38,6 +38,7 @@ permissions:
   contents: read
   id-token: write
   actions: read
+  attestations: write # Required for actions/attest-build-provenance
 
 concurrency:
   group: package-${{ inputs.APPLICATION_KEY }}-${{ github.workflow }}-${{ github.ref }}
@@ -146,6 +147,13 @@ jobs:
             --project="${{env.PROJECT_KEY}}" \
             --detailed-summary
 
+# GITHUB ATTESTATION
+      - name: "Attest Build Provenance"
+        id: attest
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: 'spring-petclinic-${{ env.APPLICATION_KEY }}/target/*.jar'
+
 # BUILD INFO
       - name: Publish build info
         run: |
@@ -179,6 +187,46 @@ jobs:
           jf apptrust version-create "${{env.APPLICATION_KEY}}" "${{env.BUILD_ID}}" --spec="${{env.APP_SPEC_JSON}}"       #  --tag="Package"
 
 # Evidence
+   ## GitHub Attestation
+      - name: "EVD: Attach GitHub Attestation"
+        if: ${{ env.BUILD_PROFILE == 'MVN' }}
+        env:
+          PROVIDER_ID: "github-attestation"
+          EVD_SPEC_JSON: './evd-spec-attestation-${{env.APPLICATION_KEY}}-${{env.BUILD_ID}}.json'
+          PREDICATE_TYPE: "https://slsa.dev/provenance/v1"
+          PRIVATE_KEY: ${{ secrets.KRISHNAM_JFROG_EVD_PRIVATEKEY }}
+          KEY_ALIAS: ${{ secrets.EVIDENCE_KEY_ALIAS }}
+        run: |
+          cat > "${{env.EVD_SPEC_JSON}}" << ATTESTEOF
+          {
+            "builder": {
+              "id": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            },
+            "buildType": "https://github.com/actions/workflow",
+            "invocation": {
+              "configSource": {
+                "uri": "git+https://github.com/${{ github.repository }}@${{ github.sha }}",
+                "entryPoint": "${{ github.workflow }}"
+              }
+            },
+            "attestation_bundle_url": "${{ steps.attest.outputs.attestation-url }}",
+            "actor": "${{ github.actor }}",
+            "repository": "${{ github.repository }}",
+            "run_id": "${{ github.run_id }}"
+          }
+          ATTESTEOF
+          cat "${{env.EVD_SPEC_JSON}}"
+
+          jf evd create \
+            --application-key="${{env.BUILD_NAME}}" \
+            --application-version="${{env.BUILD_ID}}" \
+            --provider-id="${{env.PROVIDER_ID}}" \
+            --predicate="${{env.EVD_SPEC_JSON}}" \
+            --predicate-type="${{env.PREDICATE_TYPE}}" \
+            --key="${PRIVATE_KEY}" \
+            --key-alias="${KEY_ALIAS}"
+
+          echo "Evidence attached: github-attestation"
    ## Sign App Version
       - name: "EVD: Sign App Version"
         env:
