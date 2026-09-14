@@ -245,7 +245,8 @@ jobs:
         id: attest
         uses: actions/attest-build-provenance@v2
         with:
-          subject-path: 'spring-petclinic-*/target/*.jar'
+          subject-path: './jfcli-all-apps-from-vc-spec.json'
+          
 
       # EVIDENCE: Attach GitHub Attestation
       - name: "EVD: Attach GitHub Attestation"
@@ -284,7 +285,7 @@ jobs:
             --key-alias="${{secrets.EVIDENCE_KEY_ALIAS}}"
 
           echo "Evidence attached: github-attestation"
-          
+
   ## Unit Test report for 
           # echo "ARTIFACT_NAME=$(mvn help:evaluate -Dexpression=project.artifactId -q -DforceStdout)" >> $GITHUB_ENV
           # echo "ARTIFACT_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_ENV
