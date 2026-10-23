@@ -74,7 +74,7 @@ jobs:
           cache-dependency-path: 'pom.xml'
 
       - name: "Setup JFrog CLI"
-        uses: jfrog/setup-jfrog-cli@v5
+        uses: jfrog/setup-jfrog-cli@v4
         id: setup-cli
         env:
           JF_URL: ${{ env.JF_URL }}
@@ -110,7 +110,7 @@ jobs:
       - name: MVN package application
         if: ${{ env.BUILD_PROFILE == 'MVN' }}
         run: |
-          jf mvn -B clean install surefire-report:report \
+          jf mvn -B clean install \
             -Denforcer.skip \
             -pl "spring-petclinic-${{env.APPLICATION_KEY}}" -am \
             --build-name="${{env.BUILD_NAME}}" \
