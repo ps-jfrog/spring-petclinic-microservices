@@ -27,10 +27,6 @@ on:
           - MVN
           - DOCKER
 
-# run_attempt keeps a re-run from colliding with the version created by attempt 1.
-env:
-  MVN_APP_VERSION: ga-mvn-${{ github.run_number }}-${{ github.run_attempt }}
-
 permissions:
   contents: read
   id-token: write
@@ -63,7 +59,7 @@ jobs:
       APPLICATION_KEY: "api-gateway"
       BUILD_PROFILE: "MVN"
       BUILD_NAME: "api-gateway"
-      BUILD_ID: ${{ env.MVN_APP_VERSION }} 
+      BUILD_ID: "ga-mvn-${{ github.run_number }}-${{ github.run_attempt }}" 
       RT_REPO_VIRTUAL: "spring-petclinic-ms-api-gateway-virtual"
 
   mvn_config-server:
@@ -76,7 +72,7 @@ jobs:
       APPLICATION_KEY: "config-server"
       BUILD_PROFILE: "MVN"
       BUILD_NAME: "config-server"
-      BUILD_ID: ${{ env.MVN_APP_VERSION }} 
+      BUILD_ID: "ga-mvn-${{ github.run_number }}-${{ github.run_attempt }}" 
       RT_REPO_VIRTUAL: "spring-petclinic-ms-config-server-virtual"
 
   mvn_customers-service:
@@ -89,7 +85,7 @@ jobs:
       APPLICATION_KEY: "customers-service"
       BUILD_PROFILE: "MVN"
       BUILD_NAME: "customers-service"
-      BUILD_ID: ${{ env.MVN_APP_VERSION }} 
+      BUILD_ID: "ga-mvn-${{ github.run_number }}-${{ github.run_attempt }}" 
       RT_REPO_VIRTUAL: "spring-petclinic-ms-customers-service-virtual"
 
   mvn_discovery-server:
@@ -102,7 +98,7 @@ jobs:
       APPLICATION_KEY: "discovery-server"
       BUILD_PROFILE: "MVN"
       BUILD_NAME: "discovery-server"
-      BUILD_ID: ${{ env.MVN_APP_VERSION }} 
+      BUILD_ID: "ga-mvn-${{ github.run_number }}-${{ github.run_attempt }}" 
       RT_REPO_VIRTUAL: "spring-petclinic-ms-discovery-server-virtual"
 
   mvn_genai-service:
@@ -115,7 +111,7 @@ jobs:
       APPLICATION_KEY: "genai-service"
       BUILD_PROFILE: "MVN"
       BUILD_NAME: "genai-service"
-      BUILD_ID: ${{ env.MVN_APP_VERSION }} 
+      BUILD_ID: "ga-mvn-${{ github.run_number }}-${{ github.run_attempt }}" 
       RT_REPO_VIRTUAL: "spring-petclinic-ms-genai-service-virtual"
 
   mvn_admin-server:
@@ -128,7 +124,7 @@ jobs:
       APPLICATION_KEY: "admin-server"
       BUILD_PROFILE: "MVN"
       BUILD_NAME: "admin-server"
-      BUILD_ID: ${{ env.MVN_APP_VERSION }} 
+      BUILD_ID: "ga-mvn-${{ github.run_number }}-${{ github.run_attempt }}" 
       RT_REPO_VIRTUAL: "spring-petclinic-ms-admin-server-virtual"
 
   mvn_vets-service:
@@ -141,7 +137,7 @@ jobs:
       APPLICATION_KEY: "vets-service"
       BUILD_PROFILE: "MVN"
       BUILD_NAME: "vets-service"
-      BUILD_ID: ${{ env.MVN_APP_VERSION }} 
+      BUILD_ID: "ga-mvn-${{ github.run_number }}-${{ github.run_attempt }}" 
       RT_REPO_VIRTUAL: "spring-petclinic-ms-vets-service-virtual"
 
   mvn_visits-service:
@@ -154,7 +150,7 @@ jobs:
       APPLICATION_KEY: "visits-service"
       BUILD_PROFILE: "MVN"
       BUILD_NAME: "visits-service"
-      BUILD_ID: ${{ env.MVN_APP_VERSION }} 
+      BUILD_ID: "ga-mvn-${{ github.run_number }}-${{ github.run_attempt }}" 
       RT_REPO_VIRTUAL: "spring-petclinic-ms-visits-service-virtual"
 
   mvn_multi-apps-version:
@@ -165,7 +161,7 @@ jobs:
     env:
       PROJECT_KEY: "spring-petclinic-ms"
       APPLICATION_KEY: "all-app-services" #"_AGGREGATE_"
-      APPLICATION_VERSION: ${{ env.MVN_APP_VERSION }}
+      APPLICATION_VERSION: "ga-mvn-${{ github.run_number }}-${{ github.run_attempt }}"
       BUILD_NAME: "multi-apps"
     steps:
       - name: "Checkout"
