@@ -4,11 +4,25 @@ buildApp=${1:-"DEFAULT"} buildProfile=${2:-"MVN"}
 export JF_NAME="psazuse" JF_EDGE_NAME="psazeuwedge" JFROG_CLI_LOG_LEVEL="DEBUG" 
 export JF_RT_URL="https://${JF_NAME}.jfrog.io" PROJECT_KEY="spring-petclinic-ms" 
 
-export TIMESTAMP="$(date '+%Y.%m.%d+%H%M')"
+export TIMESTAMP="$(date '+%Y.%m.%d+%H%M%S')"
 export BUILD_ID="cmd-at.${TIMESTAMP}" APPLICATION_VERSION="${TIMESTAMP}"
 export EVD_KEY_PRIVATE="$(cat ~/.ssh/jfrog_evd_private.pem)" EVD_KEY_PUBLIC="$(cat ~/.ssh/jfrog_evd_public.pem)" EVD_KEY_ALIAS="KRISHNAM_JFROG_EVD_PUBLICKEY"
 
+# JFrog build-info extractor 2.43.9 calls DefaultArtifactResolver's no-arg
+# constructor, which Maven 3.10 removed. The wrapper pins Maven 3.9.8.
+use_project_maven() {
+  local mvn_home
+  mvn_home="$(./mvnw -v 2>/dev/null | awk -F'Maven home: ' '/Maven home:/ {print $2; exit}')"
+  if [[ -z "${mvn_home}" || ! -x "${mvn_home}/bin/mvn" ]]; then
+    printf "Could not resolve Maven from ./mvnw. Homebrew Maven 3.10 crashes jf mvn.\n" >&2
+    exit 1
+  fi
+  export PATH="${mvn_home}/bin:${PATH}"
+  printf "Using %s\n" "$(mvn -version 2>/dev/null | awk 'NR==1 {print; exit}')"
+}
+
 jf config use ${JF_NAME}
+use_project_maven
 
 evd-sign-app-version(){
   export BUILD_NAME="api-gateway"
@@ -86,7 +100,10 @@ common-docker-build(){
 
     printf "\n*** App Package: ${APPLICATION_KEY}  Build and publish **\n"
     jf mvnc --repo-resolve-releases ${RT_REPO_VIRTUAL} --repo-resolve-snapshots ${RT_REPO_VIRTUAL} --repo-deploy-releases ${RT_REPO_VIRTUAL} --repo-deploy-snapshots ${RT_REPO_VIRTUAL}    
-    jf mvn clean install surefire-report:report -P buildDocker -Dcontainer.platform="linux/arm64" -pl spring-petclinic-${APPLICATION_KEY} -am --build-name=${BUILD_NAME} --build-number=${BUILD_ID} --project="${PROJECT_KEY}" --detailed-summary
+    if ! jf mvn clean install surefire-report:report -P buildDocker -Dcontainer.platform="linux/arm64" -pl spring-petclinic-${APPLICATION_KEY} -am --build-name=${BUILD_NAME} --build-number=${BUILD_ID} --project="${PROJECT_KEY}" --detailed-summary; then
+      printf "\nMaven build failed for %s. Not publishing build info or creating an AppTrust version.\n" "${APPLICATION_KEY}" >&2
+      exit 1
+    fi
     jf rt bp ${BUILD_NAME} ${BUILD_ID} --collect-env=true --collect-git-info=true --project="${PROJECT_KEY}" --detailed-summary
 
     printf "\n*** AppTrust: App Version create **\n"
@@ -120,7 +137,10 @@ common-mvn-package(){
   printf "\n*** App Package: ${APPLICATION_KEY}  Build and publish **\n"
   jf mvnc --repo-resolve-releases ${RT_REPO_VIRTUAL} --repo-resolve-snapshots ${RT_REPO_VIRTUAL} --repo-deploy-releases ${RT_REPO_VIRTUAL} --repo-deploy-snapshots ${RT_REPO_VIRTUAL}    
   
-  jf mvn clean install surefire-report:report -Denforcer.skip -pl spring-petclinic-${APPLICATION_KEY} -am --build-name=${BUILD_NAME} --build-number=${BUILD_ID} --project="${PROJECT_KEY}" --detailed-summary
+  if ! jf mvn clean install surefire-report:report -Denforcer.skip -pl spring-petclinic-${APPLICATION_KEY} -am --build-name=${BUILD_NAME} --build-number=${BUILD_ID} --project="${PROJECT_KEY}" --detailed-summary; then
+    printf "\nMaven build failed for %s. Not publishing build info or creating an AppTrust version.\n" "${APPLICATION_KEY}" >&2
+    exit 1
+  fi
   
   jf rt bp ${BUILD_NAME} ${BUILD_ID} --collect-env=true --collect-git-info=true --project="${PROJECT_KEY}" --detailed-summary
 
@@ -227,43 +247,46 @@ visits-service(){
 multi-apps-from-app-vc(){
     printf "\n *** ALL Applications to promtoe in ${PROJECT_KEY} from App Version created \n"
     # https://docs.jfrog.com/governance/docs/create-application-version-cli
+    # Child versions default to the existing ga-mvn-11 release. default() passes
+    # the versions created in this run. The aggregate version stays unique so a
+    # re-run does not collide with all-app-services/ga-mvn-11.
+    local SOURCE_VERSION="${1:-ga-mvn-11}"
     export APPLICATION_KEY="all-app-services"
     export ALL_APPS_SPEC_JSON="./jfcli-all-apps-from-vc-spec.json"
-    export APPLICATION_VERSION="ga-mvn-11"
     cat > "${ALL_APPS_SPEC_JSON}" <<EOF
     {
     "versions": [
       {
         "application_key": "api-gateway",
-        "version": "${APPLICATION_VERSION}"
+        "version": "${SOURCE_VERSION}"
       },
       {
         "application_key": "config-server",
-        "version": "${APPLICATION_VERSION}"
+        "version": "${SOURCE_VERSION}"
       }, 
       {
         "application_key": "customers-service",
-        "version": "${APPLICATION_VERSION}"
+        "version": "${SOURCE_VERSION}"
       },
       {
         "application_key": "discovery-server",
-        "version": "${APPLICATION_VERSION}"
+        "version": "${SOURCE_VERSION}"
       },
       {
         "application_key": "genai-service",
-        "version": "${APPLICATION_VERSION}"
+        "version": "${SOURCE_VERSION}"
       },
       {
         "application_key": "admin-server",
-        "version": "${APPLICATION_VERSION}"
+        "version": "${SOURCE_VERSION}"
       },
       {
         "application_key": "vets-service",
-        "version": "${APPLICATION_VERSION}"
+        "version": "${SOURCE_VERSION}"
       },
       {
         "application_key": "visits-service",
-        "version": "${APPLICATION_VERSION}"
+        "version": "${SOURCE_VERSION}"
       }
       ]
     }
@@ -385,7 +408,7 @@ default(){
    printf "\n *** All applications built and published *** \n"
    printf "\n***** [START] TS: $(date +"%Y-%m-%d %H:%M:%S") \n\n"
    # multi-apps-from-builds
-   multi-apps-from-app-vc
+   multi-apps-from-app-vc "${APPLICATION_VERSION}"
   #    rbv2-all-ms
    evd-unit-test-report
    printf "\n ----------------------------------------------------------------  "

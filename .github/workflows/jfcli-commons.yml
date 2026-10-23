@@ -81,6 +81,7 @@ jobs:
           JF_PROJECT: ${{ env.PROJECT_KEY }}
           JFROG_CLI_LOG_LEVEL: DEBUG
         with:
+          version: latest
           oidc-provider-name: ${{ vars.JF_OIDC_PROVIDER_NAME }}
           disable-job-summary: "false"
           disable-auto-build-publish: "true"
@@ -101,6 +102,10 @@ jobs:
             --repo-resolve-snapshots "${{env.RT_REPO_VIRTUAL}}" \
             --repo-deploy-releases "${{env.RT_REPO_VIRTUAL}}" \
             --repo-deploy-snapshots "${{env.RT_REPO_VIRTUAL}}"
+
+      # - name: "Curation: audit" 
+      #   run: |
+      #     jf ca --format=json --threads=100
 
       - name: MVN package application
         if: ${{ env.BUILD_PROFILE == 'MVN' }}
@@ -137,7 +142,7 @@ jobs:
       - name: DOCKER package application
         if: ${{ env.BUILD_PROFILE == 'DOCKER' }}
         run: |
-          jf mvn -B clean install surefire-report:report \
+          jf mvn -B clean install \
             -Denforcer.skip \
             -P buildDocker \
             -Dcontainer.platform="${{env.DOCKER_BUILDX_PLATFORMS}}" \
@@ -226,17 +231,19 @@ jobs:
             --key-alias="${KEY_ALIAS}"
 
           echo "Evidence attached: github-attestation"
-   ## Sign App Version
+
+    ## Cryptographic Signature
       - name: "EVD: Sign App Version"
         env:
           EVD_SPEC_JSON: './evd-spec-${{env.APPLICATION_KEY}}-${{env.BUILD_ID}}.json'  # ref https://jfrog.com/help/r/jfrog-artifactory-documentation/evidence-setup
           PREDICATE_TYPE: "https://jfrog.com/evidence/build-signature/v1"
           PROVIDER_ID: "sign"
         run: |
+          NOW_UTC="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
           cat > "${{env.EVD_SPEC_JSON}}" << SIGNEOF
           {
             "actor": "${{ github.actor }}",
-            "date": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'"
+            "date": "${NOW_UTC}"
           }
           SIGNEOF
           cat "${{env.EVD_SPEC_JSON}}"
