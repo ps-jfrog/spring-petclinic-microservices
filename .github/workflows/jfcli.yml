@@ -2,6 +2,7 @@ name: "AppTrust: Package"
 
 on:
   push:
+    branches: [ main ]
   workflow_dispatch:
     inputs:
       APPLICATION_KEY:
@@ -25,21 +26,11 @@ on:
         options:
           - MVN
           - DOCKER
-      PREDICATE_TYPE:
-        description: "Predicate type"
-        required: true
-        type: choice
-        options:  # refernce: https://docs.jfrog.com/governance/docs/evidence-payload, 
-          - https://jfrog.com/evidence/test-results/v1
-          - https://jfrog.com/evidence/approval/v1
-          - https://jfrog.com/evidence/distribution/v1
-          - https://slsa.dev/provenance/v1
-          - http://atlassian.com/jira/issues/v1
-          - https://sonar.com/evidence/sonarqube/v1
-          - https://in-toto.io/Statement/v1
-          - https://jfrog.com/evidence/promotion/v1
-          - https://cyclonedx.org/bom/v1.4
-          - https://spdx.dev/Document/v2.2
+
+# run_attempt keeps a re-run from colliding with the version created by attempt 1.
+env:
+  MVN_APP_VERSION: ga-mvn-${{ github.run_number }}-${{ github.run_attempt }}
+
 permissions:
   contents: read
   id-token: write
@@ -58,7 +49,7 @@ jobs:
       APPLICATION_KEY: ${{ inputs.APPLICATION_KEY }}
       BUILD_PROFILE: ${{ inputs.BUILD_PROFILE }}
       BUILD_NAME: ${{ inputs.APPLICATION_KEY }}
-      BUILD_ID: "ga-${{ github.run_number }}"
+      BUILD_ID: "ga-${{ github.run_number }}-${{ github.run_attempt }}"
       RT_REPO_VIRTUAL: "spring-petclinic-ms-${{ inputs.APPLICATION_KEY }}-virtual"
 
 # Push Trigger: 
@@ -72,7 +63,7 @@ jobs:
       APPLICATION_KEY: "api-gateway"
       BUILD_PROFILE: "MVN"
       BUILD_NAME: "api-gateway"
-      BUILD_ID: "ga-mvn-${{ github.run_number }}" 
+      BUILD_ID: ${{ env.MVN_APP_VERSION }} 
       RT_REPO_VIRTUAL: "spring-petclinic-ms-api-gateway-virtual"
 
   mvn_config-server:
@@ -85,7 +76,7 @@ jobs:
       APPLICATION_KEY: "config-server"
       BUILD_PROFILE: "MVN"
       BUILD_NAME: "config-server"
-      BUILD_ID: "ga-mvn-${{ github.run_number }}" 
+      BUILD_ID: ${{ env.MVN_APP_VERSION }} 
       RT_REPO_VIRTUAL: "spring-petclinic-ms-config-server-virtual"
 
   mvn_customers-service:
@@ -98,7 +89,7 @@ jobs:
       APPLICATION_KEY: "customers-service"
       BUILD_PROFILE: "MVN"
       BUILD_NAME: "customers-service"
-      BUILD_ID: "ga-mvn-${{ github.run_number }}" 
+      BUILD_ID: ${{ env.MVN_APP_VERSION }} 
       RT_REPO_VIRTUAL: "spring-petclinic-ms-customers-service-virtual"
 
   mvn_discovery-server:
@@ -111,7 +102,7 @@ jobs:
       APPLICATION_KEY: "discovery-server"
       BUILD_PROFILE: "MVN"
       BUILD_NAME: "discovery-server"
-      BUILD_ID: "ga-mvn-${{ github.run_number }}" 
+      BUILD_ID: ${{ env.MVN_APP_VERSION }} 
       RT_REPO_VIRTUAL: "spring-petclinic-ms-discovery-server-virtual"
 
   mvn_genai-service:
@@ -124,7 +115,7 @@ jobs:
       APPLICATION_KEY: "genai-service"
       BUILD_PROFILE: "MVN"
       BUILD_NAME: "genai-service"
-      BUILD_ID: "ga-mvn-${{ github.run_number }}" 
+      BUILD_ID: ${{ env.MVN_APP_VERSION }} 
       RT_REPO_VIRTUAL: "spring-petclinic-ms-genai-service-virtual"
 
   mvn_admin-server:
@@ -137,7 +128,7 @@ jobs:
       APPLICATION_KEY: "admin-server"
       BUILD_PROFILE: "MVN"
       BUILD_NAME: "admin-server"
-      BUILD_ID: "ga-mvn-${{ github.run_number }}" 
+      BUILD_ID: ${{ env.MVN_APP_VERSION }} 
       RT_REPO_VIRTUAL: "spring-petclinic-ms-admin-server-virtual"
 
   mvn_vets-service:
@@ -150,7 +141,7 @@ jobs:
       APPLICATION_KEY: "vets-service"
       BUILD_PROFILE: "MVN"
       BUILD_NAME: "vets-service"
-      BUILD_ID: "ga-mvn-${{ github.run_number }}" 
+      BUILD_ID: ${{ env.MVN_APP_VERSION }} 
       RT_REPO_VIRTUAL: "spring-petclinic-ms-vets-service-virtual"
 
   mvn_visits-service:
@@ -163,7 +154,7 @@ jobs:
       APPLICATION_KEY: "visits-service"
       BUILD_PROFILE: "MVN"
       BUILD_NAME: "visits-service"
-      BUILD_ID: "ga-mvn-${{ github.run_number }}" 
+      BUILD_ID: ${{ env.MVN_APP_VERSION }} 
       RT_REPO_VIRTUAL: "spring-petclinic-ms-visits-service-virtual"
 
   mvn_multi-apps-version:
@@ -174,7 +165,7 @@ jobs:
     env:
       PROJECT_KEY: "spring-petclinic-ms"
       APPLICATION_KEY: "all-app-services" #"_AGGREGATE_"
-      APPLICATION_VERSION: "ga-mvn-${{ github.run_number }}"
+      APPLICATION_VERSION: ${{ env.MVN_APP_VERSION }}
       BUILD_NAME: "multi-apps"
     steps:
       - name: "Checkout"
@@ -192,6 +183,7 @@ jobs:
         with:
           oidc-provider-name: ${{ vars.JF_OIDC_PROVIDER_NAME }}
           disable-job-summary: "false"
+          disable-auto-build-publish: "true"
 
       - name: "MVN: Multi-Apps Version"
         env:
@@ -254,6 +246,8 @@ jobs:
           PROVIDER_ID: "github-attestation"
           EVD_SPEC_JSON: './evd-spec-attestation-${{env.APPLICATION_KEY}}-${{env.APPLICATION_VERSION}}.json'
           PREDICATE_TYPE: "https://slsa.dev/provenance/v1"
+          EVD_PRIVATE_KEY: ${{ secrets.KRISHNAM_JFROG_EVD_PRIVATEKEY }}
+          EVD_KEY_ALIAS: ${{ secrets.EVIDENCE_KEY_ALIAS }}
         run: |
           cat > "${{env.EVD_SPEC_JSON}}" << ATTESTEOF
           {
@@ -275,28 +269,28 @@ jobs:
           ATTESTEOF
           cat "${{env.EVD_SPEC_JSON}}"
 
+          umask 077
+          printf '%s\n' "$EVD_PRIVATE_KEY" > evd-private.pem
           jf evd create \
             --application-key="${{env.APPLICATION_KEY}}" \
             --application-version="${{env.APPLICATION_VERSION}}" \
             --provider-id="${{env.PROVIDER_ID}}" \
             --predicate="${{env.EVD_SPEC_JSON}}" \
             --predicate-type="${{env.PREDICATE_TYPE}}" \
-            --key="${{secrets.KRISHNAM_JFROG_EVD_PRIVATEKEY}}" \
-            --key-alias="${{secrets.EVIDENCE_KEY_ALIAS}}"
+            --key=evd-private.pem \
+            --key-alias="$EVD_KEY_ALIAS"
+          rm -f evd-private.pem
 
           echo "Evidence attached: github-attestation"
 
-  ## Unit Test report for 
-          # echo "ARTIFACT_NAME=$(mvn help:evaluate -Dexpression=project.artifactId -q -DforceStdout)" >> $GITHUB_ENV
-          # echo "ARTIFACT_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_ENV
-          # echo "SHORT_COMMIT_CODE=" >> $GITHUB_ENV
-          # echo "TODAYS_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
       - name: "EVD: Unit Test report"
         env:
           PROVIDER_ID: "junit"
           EVD_SPEC_JSON: './evd-spec-${{env.APPLICATION_KEY}}-${{env.APPLICATION_VERSION}}.json'
           EVD_SPEC_MARKDOWN: './evd-spec-${{env.APPLICATION_KEY}}-${{env.APPLICATION_VERSION}}.md'
           PREDICATE_TYPE: "https://jfrog.com/evidence/test-results/v1"
+          EVD_PRIVATE_KEY: ${{ secrets.KRISHNAM_JFROG_EVD_PRIVATEKEY }}
+          EVD_KEY_ALIAS: ${{ secrets.EVIDENCE_KEY_ALIAS }}
           JUNIT_TOTAL: 100
           JUNIT_PASSED: 100
           JUNIT_FAILED: 0
@@ -348,7 +342,10 @@ jobs:
           JUNITMAKDEOF
           cat "${{env.EVD_SPEC_MARKDOWN}}"
 
-          jf evd create --application-key="${{env.APPLICATION_KEY}}" --application-version="${{env.APPLICATION_VERSION}}" --provider-id="${{env.PROVIDER_ID}}" --predicate="${{env.EVD_SPEC_JSON}}" --predicate-type="${{env.PREDICATE_TYPE}}" --markdown="${{env.EVD_SPEC_MARKDOWN}}" --key="${{secrets.KRISHNAM_JFROG_EVD_PRIVATEKEY}}" --key-alias="${{secrets.EVIDENCE_KEY_ALIAS}}"
+          umask 077
+          printf '%s\n' "$EVD_PRIVATE_KEY" > evd-private.pem
+          jf evd create --application-key="${{env.APPLICATION_KEY}}" --application-version="${{env.APPLICATION_VERSION}}" --provider-id="${{env.PROVIDER_ID}}" --predicate="${{env.EVD_SPEC_JSON}}" --predicate-type="${{env.PREDICATE_TYPE}}" --markdown="${{env.EVD_SPEC_MARKDOWN}}" --key=evd-private.pem --key-alias="$EVD_KEY_ALIAS"
+          rm -f evd-private.pem
 
           echo "Evidence attached: test-results"
 
