@@ -59,6 +59,7 @@ jobs:
       DOCKER_BUILDX_PLATFORMS: ${{ inputs.DOCKER_BUILDX_PLATFORMS }}
       JF_HOST: ${{ vars.JF_NAME }}.jfrog.io
       JF_URL: https://${{ vars.JF_NAME }}.jfrog.io
+      MAVEN_OPTS: "--enable-native-access=ALL-UNNAMED"
     steps:
       - name: "Checkout"
         uses: actions/checkout@v4
@@ -72,6 +73,22 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
           cache: 'maven'
           cache-dependency-path: 'pom.xml'
+
+      # JFrog's Maven build-info extractor 2.43.9 is incompatible with
+      # runner-provided Maven 3.10. The repository wrapper pins Maven 3.9.8.
+      - name: "Use Maven Wrapper version"
+        shell: bash
+        run: |
+          set -euo pipefail
+          MAVEN_HOME="$(./mvnw -v | awk -F'Maven home: ' '/Maven home:/ {print $2; exit}')"
+          if [[ -z "${MAVEN_HOME}" || ! -x "${MAVEN_HOME}/bin/mvn" ]]; then
+            echo "Could not resolve Maven from ./mvnw" >&2
+            exit 1
+          fi
+          version="$("${MAVEN_HOME}/bin/mvn" -version | awk 'NR==1 {print; exit}')"
+          echo "Using ${version}"
+          echo "${version}" | grep -Eq 'Apache Maven 3\.9\.'
+          echo "${MAVEN_HOME}/bin" >> "$GITHUB_PATH"
 
       - name: "Setup JFrog CLI"
         uses: jfrog/setup-jfrog-cli@v4
@@ -111,9 +128,10 @@ jobs:
         if: ${{ env.BUILD_PROFILE == 'MVN' }}
         # ref: https://docs.jfrog.com/artifactory/docs/jf-mvn
         run: |
-          export MAVEN_OPTS='--enable-native-access=ALL-UNNAMED'
-          echo "MAVEN_OPTS: $MAVEN_OPTS"
-          jf mvn clean install surefire-report:report -Denforcer.skip -pl spring-petclinic-${{env.APPLICATION_KEY}} -am --build-name="${{env.BUILD_NAME}}" --build-number="${{env.BUILD_ID}}" --project="${{env.PROJECT_KEY}}" --detailed-summary;
+          set -euo pipefail
+          mvn -version
+          mvn -version | awk 'NR==1 {print; exit}' | grep -Eq 'Apache Maven 3\.9\.'
+          jf mvn -B clean install surefire-report:report -Denforcer.skip -pl spring-petclinic-${{env.APPLICATION_KEY}} -am --build-name="${{env.BUILD_NAME}}" --build-number="${{env.BUILD_ID}}" --project="${{env.PROJECT_KEY}}" --detailed-summary
 
 # PACKAGE: DOCKER
       - name: "Docker authentication"
@@ -139,6 +157,9 @@ jobs:
       - name: DOCKER package application
         if: ${{ env.BUILD_PROFILE == 'DOCKER' }}
         run: |
+          set -euo pipefail
+          mvn -version
+          mvn -version | awk 'NR==1 {print; exit}' | grep -Eq 'Apache Maven 3\.9\.'
           jf mvn -B clean install \
             -Denforcer.skip \
             -P buildDocker \
