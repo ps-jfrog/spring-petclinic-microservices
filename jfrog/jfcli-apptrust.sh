@@ -134,6 +134,8 @@ common-mvn-package(){
   local APPLICATION_KEY=${1} 
   local BUILD_NAME="${APPLICATION_KEY}" RT_REPO_VIRTUAL="spring-petclinic-ms-${APPLICATION_KEY}-virtual" 
 
+  export MAVEN_OPTS='--enable-native-access=ALL-UNNAMED'
+  echo "MAVEN_OPTS: $MAVEN_OPTS"
   printf "\n*** App Package: ${APPLICATION_KEY}  Build and publish **\n"
   jf mvnc --repo-resolve-releases ${RT_REPO_VIRTUAL} --repo-resolve-snapshots ${RT_REPO_VIRTUAL} --repo-deploy-releases ${RT_REPO_VIRTUAL} --repo-deploy-snapshots ${RT_REPO_VIRTUAL}    
   

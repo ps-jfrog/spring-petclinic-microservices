@@ -109,8 +109,11 @@ jobs:
 
       - name: MVN package application
         if: ${{ env.BUILD_PROFILE == 'MVN' }}
+        # ref: https://docs.jfrog.com/artifactory/docs/jf-mvn
         run: |
-           jf mvn clean install surefire-report:report -Denforcer.skip -pl spring-petclinic-${{env.APPLICATION_KEY}} -am --build-name="${{env.BUILD_NAME}}" --build-number="${{env.BUILD_ID}}" --project="${{env.PROJECT_KEY}}" --detailed-summary;
+          export MAVEN_OPTS='--enable-native-access=ALL-UNNAMED'
+          echo "MAVEN_OPTS: $MAVEN_OPTS"
+          jf mvn clean install surefire-report:report -Denforcer.skip -pl spring-petclinic-${{env.APPLICATION_KEY}} -am --build-name="${{env.BUILD_NAME}}" --build-number="${{env.BUILD_ID}}" --project="${{env.PROJECT_KEY}}" --detailed-summary;
 
 # PACKAGE: DOCKER
       - name: "Docker authentication"
